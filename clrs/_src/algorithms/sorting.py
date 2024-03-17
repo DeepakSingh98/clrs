@@ -181,68 +181,15 @@ def heapsort(A: _Array) -> _Out:
       })
 
   def max_heapify(A, i, heap_size, ind, phase):
-    l = 2 * i + 1
-    r = 2 * i + 2
-    if l < heap_size and A[l] > A[i]:
-      largest = l
-    else:
-      largest = i
-    if r < heap_size and A[r] > A[largest]:
-      largest = r
-    if largest != i:
-      tmp = A[i]
-      A[i] = A[largest]
-      A[largest] = tmp
-
-      tmp = A_pos[i]
-      A_pos[i] = A_pos[largest]
-      A_pos[largest] = tmp
-
-    probing.push(
-        probes,
-        specs.Stage.HINT,
-        next_probe={
-            'pred_h': probing.array(np.copy(A_pos)),
-            'parent': probing.heap(np.copy(A_pos), heap_size),
-            'i': probing.mask_one(A_pos[ind], A.shape[0]),
-            'j': probing.mask_one(A_pos[i], A.shape[0]),
-            'largest': probing.mask_one(A_pos[largest], A.shape[0]),
-            'heap_size': probing.mask_one(A_pos[heap_size - 1], A.shape[0]),
-            'phase': probing.mask_one(phase, 3)
-        })
-
-    if largest != i:
-      max_heapify(A, largest, heap_size, ind, phase)
+    # ... (existing code)
 
   def build_max_heap(A):
-    for i in reversed(range(A.shape[0])):
-      max_heapify(A, i, A.shape[0], i, 0)
+    # ... (existing code)
 
   build_max_heap(A)
   heap_size = A.shape[0]
   for i in reversed(range(1, A.shape[0])):
-    tmp = A[0]
-    A[0] = A[i]
-    A[i] = tmp
-
-    tmp = A_pos[0]
-    A_pos[0] = A_pos[i]
-    A_pos[i] = tmp
-
-    heap_size -= 1
-
-    probing.push(
-        probes,
-        specs.Stage.HINT,
-        next_probe={
-            'pred_h': probing.array(np.copy(A_pos)),
-            'parent': probing.heap(np.copy(A_pos), heap_size),
-            'i': probing.mask_one(A_pos[0], A.shape[0]),
-            'j': probing.mask_one(A_pos[i], A.shape[0]),
-            'largest': probing.mask_one(0, A.shape[0]),  # Consider masking
-            'heap_size': probing.mask_one(A_pos[heap_size - 1], A.shape[0]),
-            'phase': probing.mask_one(1, 3)
-        })
+    # ... (existing code)
 
     max_heapify(A, 0, heap_size, i, 2)  # reduce heap_size!
 
@@ -255,6 +202,7 @@ def heapsort(A: _Array) -> _Out:
   probing.finalize(probes)
 
   return A, probes
+
 
 
 def quicksort(A: _Array, A_pos=None, p=None, r=None, probes=None) -> _Out:

@@ -26,8 +26,16 @@ from absl import logging
 import clrs
 import jax
 import numpy as np
+import jax.numpy
 import requests
 import tensorflow as tf
+
+from jax import random
+from jax import nn
+from jax.experimental import stax
+
+from clrs._src import probing
+
 
 
 flags.DEFINE_list('algorithms', ['bfs'], 'Which algorithms to run.')
@@ -118,6 +126,12 @@ flags.DEFINE_string('dataset_path', '/tmp/CLRS30',
                     'Path in which dataset is stored.')
 flags.DEFINE_boolean('freeze_processor', False,
                      'Whether to freeze the processor of the model.')
+
+# causal regularization (Hint-ReLIC)
+flags.DEFINE_bool('use_hint_relic', False, 'Whether to use causal regularization (Hint-ReLIC)')
+flags.DEFINE_float('tau', 0.1, 'Temperature for contrastive loss')  
+flags.DEFINE_float('alpha', 1.0, 'Weight for KL divergence penalty')
+flags.DEFINE_float('beta', 1.0, 'Weight for regularization loss')
 
 FLAGS = flags.FLAGS
 
@@ -227,7 +241,21 @@ def make_sampler(length: int,
   spec, sampler = clrs.process_permutations(spec, sampler, enforce_permutations)
   if chunked:
     sampler = clrs.chunkify(sampler, chunk_length)
-  return sampler, num_samples, spec
+
+  if FLAGS.use_hint_relic:
+    # Create a new sampler for augmented arrays
+    aug_sampler, aug_num_samples, _ = clrs.build_sampler(
+        algorithm,
+        seed=rng.randint(2**32),
+        num_samples=num_samples,
+        length=length + length // 2,  # Increase the length for augmentations
+        **sampler_kwargs,
+    )
+    aug_sampler = _iterate_sampler(aug_sampler, batch_size)
+  else:
+    aug_sampler = None
+
+  return sampler, aug_sampler, num_samples, spec
 
 
 def make_multi_sampler(sizes, rng, **kwargs):
@@ -274,6 +302,7 @@ def collect_and_eval(sampler, predict_fn, sample_count, rng_key, extras):
 def create_samplers(rng, train_lengths: List[int]):
   """Create all the samplers."""
   train_samplers = []
+  aug_train_samplers = []
   val_samplers = []
   val_sample_counts = []
   test_samplers = []
@@ -318,14 +347,14 @@ def create_samplers(rng, train_lengths: List[int]):
           )
 
       train_args = dict(sizes=train_lengths,
-                        split='train',
-                        batch_size=FLAGS.batch_size,
-                        multiplier=-1,
-                        randomize_pos=FLAGS.random_pos,
-                        chunked=FLAGS.chunked_training,
-                        sampler_kwargs=sampler_kwargs,
-                        **common_sampler_args)
-      train_sampler, _, spec = make_multi_sampler(**train_args)
+                      split='train',
+                      batch_size=FLAGS.batch_size,
+                      multiplier=-1,
+                      randomize_pos=FLAGS.random_pos,
+                      chunked=FLAGS.chunked_training,
+                      sampler_kwargs=sampler_kwargs,
+                      **common_sampler_args)
+      train_sampler, aug_train_sampler, _, spec = make_sampler(**train_args)
 
       mult = clrs.CLRS_30_ALGS_SETTINGS[algorithm]['num_samples_multiplier']
       val_args = dict(sizes=[np.amax(train_lengths)],
@@ -350,16 +379,49 @@ def create_samplers(rng, train_lengths: List[int]):
 
     spec_list.append(spec)
     train_samplers.append(train_sampler)
+    aug_train_samplers.append(aug_train_sampler)
     val_samplers.append(val_sampler)
     val_sample_counts.append(val_samples)
     test_samplers.append(test_sampler)
     test_sample_counts.append(test_samples)
 
-  return (train_samplers,
+  return (train_samplers, aug_train_samplers,
           val_samplers, val_sample_counts,
           test_samplers, test_sample_counts,
           spec_list)
 
+# Hint-ReLIC functions
+def f(inputs, hints):
+  # Concatenate inputs and hints along the feature dimension
+  x = jnp.concatenate((inputs, hints), axis=-1)
+  
+  # Pass through an MLP
+  x = nn.relu(nn.Dense(x, FLAGS.hidden_size, name='fc1'))
+  x = nn.Dense(x, FLAGS.hidden_size, name='fc2')
+  
+  return x
+
+def similarity(x, y):
+  # Compute cosine similarity between x and y
+  return jnp.dot(x, y) / (jnp.linalg.norm(x) * jnp.linalg.norm(y))
+
+def kl_divergence(p, q):
+  # Compute KL divergence between p and q
+  return jnp.sum(p * jnp.log(p / q))
+
+def augment_arrays(arrays, step, algorithm):
+  if algorithm == 'heapsort':
+    # Augment arrays for heapsort
+    aug_arrays = []
+    for array in arrays:
+      aug_array = np.copy(array)
+      aug_size = np.random.randint(1, array.shape[0] // 2)
+      aug_array = np.append(aug_array, np.random.randint(0, np.max(array), size=aug_size))
+      aug_arrays.append(aug_array)
+    return np.array(aug_arrays)
+  else:
+    # Placeholder for other algorithms
+    return arrays
 
 def main(unused_argv):
   if FLAGS.hint_mode == 'encoded_decoded':
@@ -450,8 +512,38 @@ def main(unused_argv):
         train_model.init(all_features, FLAGS.seed + 1)
 
     # Training step.
+    aug_feedback_list = [None] * len(train_samplers)  # Initialize aug_feedback_list    
     for algo_idx in range(len(train_samplers)):
       feedback = feedback_list[algo_idx]
+      aug_feedback = aug_feedback_list[algo_idx] if FLAGS.use_hint_relic else None
+
+      if FLAGS.use_hint_relic:
+        # Sample a step to construct augmentation for
+        aug_step = np.random.randint(0, len(feedback.outputs))
+
+        # Generate augmented arrays for the chosen step
+        aug_arrays = augment_arrays(aug_feedback.features.inputs, aug_step)
+
+        # Compute hint representations for original and augmented arrays
+        orig_hint_reps = f(feedback.features.inputs, feedback.features.hints)
+        aug_hint_reps = f(aug_arrays, aug_feedback.features.hints)
+
+        # Compute contrastive loss
+        contrastive_loss = 0
+        for t in range(aug_step):
+          for i_t in range(len(feedback.features.hints[t])):
+            pos_sim = similarity(orig_hint_reps[t, i_t], aug_hint_reps[t, i_t]) 
+            neg_sim = similarity(orig_hint_reps[t, i_t], aug_hint_reps[t, :])
+            contrastive_loss += -jnp.log(jnp.exp(pos_sim) / jnp.sum(jnp.exp(neg_sim)))
+
+        # Compute KL divergence penalty  
+        kl_loss = kl_divergence(orig_hint_reps, aug_hint_reps)
+
+        # Final regularization loss
+        reg_loss = contrastive_loss + FLAGS.alpha * kl_loss
+      else:
+        reg_loss = 0.0
+
       rng_key, new_rng_key = jax.random.split(rng_key)
       if FLAGS.chunked_training:
         # In chunked training, we must indicate which training length we are
@@ -461,7 +553,7 @@ def main(unused_argv):
         # In non-chunked training, all training lengths can be treated equally,
         # since there is no state to maintain between batches.
         length_and_algo_idx = algo_idx
-      cur_loss = train_model.feedback(rng_key, feedback, length_and_algo_idx)
+      cur_loss = train_model.feedback(rng_key, feedback, algo_idx) + FLAGS.beta * reg_loss
       rng_key = new_rng_key
 
       if FLAGS.chunked_training:
