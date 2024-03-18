@@ -26,15 +26,12 @@ from absl import logging
 import clrs
 import jax
 import numpy as np
-import jax.numpy
+import jax.numpy as jnp
 import requests
 import tensorflow as tf
 
 from jax import random
 from jax import nn
-from jax.experimental import stax
-
-from clrs._src import probing
 
 
 
