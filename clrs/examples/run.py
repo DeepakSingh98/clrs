@@ -258,17 +258,25 @@ def make_sampler(length: int,
 def make_multi_sampler(sizes, rng, **kwargs):
   """Create a sampler with cycling sample sizes."""
   ss = []
+  aug_ss = []
   tot_samples = 0
   for length in sizes:
-    sampler, num_samples, spec = make_sampler(length, rng, **kwargs)
+    sampler, aug_sampler, num_samples, spec = make_sampler(length, rng, **kwargs)
     ss.append(sampler)
+    aug_ss.append(aug_sampler)
     tot_samples += num_samples
 
   def cycle_samplers():
     while True:
       for s in ss:
         yield next(s)
-  return cycle_samplers(), tot_samples, spec
+
+  def cycle_aug_samplers():
+    while True:
+      for s in aug_ss:
+        yield next(s)
+
+  return cycle_samplers(), cycle_aug_samplers(), tot_samples, spec
 
 
 def _concat(dps, axis):
@@ -343,36 +351,43 @@ def create_samplers(rng, train_lengths: List[int]):
           chunk_length=FLAGS.chunk_length,
           )
 
-      train_args = dict(sizes=train_lengths,
+      train_args = dict(length=train_lengths[0],
                       split='train',
                       batch_size=FLAGS.batch_size,
                       multiplier=-1,
                       randomize_pos=FLAGS.random_pos,
                       chunked=FLAGS.chunked_training,
+                      chunk_length=FLAGS.chunk_length,
                       sampler_kwargs=sampler_kwargs,
                       **common_sampler_args)
       train_sampler, aug_train_sampler, _, spec = make_sampler(**train_args)
 
+      if len(train_lengths) > 1:
+        train_sampler, aug_train_sampler, _, _ = make_multi_sampler(
+            train_lengths, rng, **train_args)
+
       mult = clrs.CLRS_30_ALGS_SETTINGS[algorithm]['num_samples_multiplier']
-      val_args = dict(sizes=[np.amax(train_lengths)],
+      val_args = dict(length=np.amax(train_lengths),
                       split='val',
                       batch_size=32,
                       multiplier=2 * mult,
                       randomize_pos=FLAGS.random_pos,
                       chunked=False,
+                      chunk_length=FLAGS.chunk_length,
                       sampler_kwargs=sampler_kwargs,
                       **common_sampler_args)
-      val_sampler, val_samples, spec = make_multi_sampler(**val_args)
+      val_sampler, _, val_samples, spec = make_sampler(**val_args)
 
-      test_args = dict(sizes=[-1],
-                       split='test',
-                       batch_size=32,
-                       multiplier=2 * mult,
-                       randomize_pos=False,
-                       chunked=False,
-                       sampler_kwargs={},
-                       **common_sampler_args)
-      test_sampler, test_samples, spec = make_multi_sampler(**test_args)
+      test_args = dict(length=-1,
+                     split='test',
+                     batch_size=32,
+                     multiplier=2 * mult,
+                     randomize_pos=False,
+                     chunked=False,
+                     chunk_length=FLAGS.chunk_length,
+                     sampler_kwargs={},
+                     **common_sampler_args)
+      test_sampler, _, test_samples, spec = make_sampler(**test_args)
 
     spec_list.append(spec)
     train_samplers.append(train_sampler)
