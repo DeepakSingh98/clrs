@@ -533,7 +533,8 @@ def main(unused_argv):
     new_rng_key, rng_key = jax.random.split(rng_key)
     latents_config.set_latents_filepath(FLAGS.latents_path, algo_idx, 
                                         FLAGS.algorithms, FLAGS.seed,
-                                        FLAGS.processor_type)
+                                        FLAGS.processor_type, 
+                                        test_sample_counts[algo_idx])
     test_stats = collect_and_eval(
         test_samplers[algo_idx],
         functools.partial(eval_model.predict, algorithm_index=algo_idx),
