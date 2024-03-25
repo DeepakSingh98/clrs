@@ -123,6 +123,8 @@ flags.DEFINE_boolean('freeze_processor', False,
 
 flags.DEFINE_boolean('save_latents', False,
                      'Whether to save latent trajectories during inference.')
+flags.DEFINE_string('latents_path', '/tmp/CLRS30',
+                    'Path in which latents are stored.')
 
 FLAGS = flags.FLAGS
 
@@ -529,7 +531,8 @@ def main(unused_argv):
                      'algorithm': FLAGS.algorithms[algo_idx]}
 
     new_rng_key, rng_key = jax.random.split(rng_key)
-    latents_config.set_latents_filepath(algo_idx, FLAGS.algorithms, FLAGS.seed,
+    latents_config.set_latents_filepath(FLAGS.latents_path, algo_idx, 
+                                        FLAGS.algorithms, FLAGS.seed,
                                         FLAGS.processor_type)
     test_stats = collect_and_eval(
         test_samplers[algo_idx],

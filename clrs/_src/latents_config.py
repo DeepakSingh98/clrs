@@ -17,10 +17,10 @@ class LatentsConfig:
 
         host_callback.call(save_callback, latents)
     
-    def set_latents_filepath(self, algo_index, algorithms, seed, processor_type):
+    def set_latents_filepath(self, latents_path, algo_index, algorithms, seed, processor_type):
         # Infer task type, processor type, and seed from FLAGS
         task_type = 'single_task' if len(algorithms) == 1 else 'multi_task'
-        latents_dir = os.path.join('/weights/latents', task_type, f'{processor_type}_{seed}')
+        latents_dir = os.path.join(latents_path, '/latents', task_type, f'{processor_type}_{seed}')
         os.makedirs(latents_dir, exist_ok=True)
         latents_filepath = os.path.join(latents_dir, f'{algorithms[algo_index]}.npz')
         self.filepath = latents_filepath
