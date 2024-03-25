@@ -29,6 +29,8 @@ import numpy as np
 import requests
 import tensorflow as tf
 
+from clrs._src.latents_config import latents_config
+
 
 flags.DEFINE_list('algorithms', ['bfs'], 'Which algorithms to run.')
 flags.DEFINE_list('train_lengths', ['4', '7', '11', '13', '16'],
@@ -118,6 +120,9 @@ flags.DEFINE_string('dataset_path', '/tmp/CLRS30',
                     'Path in which dataset is stored.')
 flags.DEFINE_boolean('freeze_processor', False,
                      'Whether to freeze the processor of the model.')
+
+flags.DEFINE_boolean('save_latents', False,
+                     'Whether to save latent trajectories during inference.')
 
 FLAGS = flags.FLAGS
 
@@ -513,6 +518,8 @@ def main(unused_argv):
     step += 1
     length_idx = (length_idx + 1) % len(train_lengths)
 
+  latents_config.save_latents_flag = FLAGS.save_latents
+
   logging.info('Restoring best model from checkpoint...')
   eval_model.restore_model('best.pkl', only_load_processor=False)
 
@@ -522,6 +529,8 @@ def main(unused_argv):
                      'algorithm': FLAGS.algorithms[algo_idx]}
 
     new_rng_key, rng_key = jax.random.split(rng_key)
+    latents_config.set_latents_filepath(algo_idx, FLAGS.algorithms, FLAGS.seed,
+                                        FLAGS.processor_type)
     test_stats = collect_and_eval(
         test_samplers[algo_idx],
         functools.partial(eval_model.predict, algorithm_index=algo_idx),
