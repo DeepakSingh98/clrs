@@ -3,6 +3,7 @@ import numpy as np
 from absl import logging
 import os
 import jax
+import jax.numpy as jnp
 
 class LatentsConfig:
     def __init__(self):
@@ -18,11 +19,11 @@ class LatentsConfig:
             self.current_batch += 1
 
             if self.current_batch == self.num_batches:
-                accumulated_latents = jax.tree_util.tree_multimap(
-                    lambda *args: np.concatenate(args, axis=0), *self.latents_list)
+                accumulated_latents = jax.tree_util.tree_map(
+                    lambda *args: jnp.stack(args, axis=0), *self.latents_list)
 
                 def save_callback(accumulated_latents):
-                    np_latents = {k: np.asarray(v) for k, v in accumulated_latents.items()}
+                    np_latents = jax.tree_util.tree_map(np.asarray, accumulated_latents)
                     np.savez(self.filepath, **np_latents)
                     logging.info(f"Latents saved to {self.filepath}")
                     self.latents_list.clear()
