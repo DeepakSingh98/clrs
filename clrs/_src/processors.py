@@ -503,7 +503,7 @@ class PGN(Processor):
     
     if latents_config.save_latents_flag:
       latents = {"z": z, "msgs": msgs, "tri_msgs": tri_msgs, "ret": ret}
-      latents_config.save_latents_to_file(latents_config.filepath, latents)
+      latents_config.accumulate_and_save_latents(latents)
 
     return ret, tri_msgs  # pytype: disable=bad-return-type  # numpy-scalars
 
