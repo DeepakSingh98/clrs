@@ -29,6 +29,7 @@ from clrs._src.evaluation import evaluate
 from clrs._src.evaluation import evaluate_hints
 from clrs._src.model import Model
 from clrs._src.probing import DataPoint
+from clrs._src.latents_config import latents_config
 from clrs._src.probing import predecessor_to_cyclic_predecessor_and_first
 from clrs._src.processors import get_processor_factory
 from clrs._src.samplers import build_sampler
@@ -63,6 +64,7 @@ __all__ = (
     "get_dataset_gcp_url",
     "get_processor_factory",
     "DataPoint",
+    "latents_config",
     "predecessor_to_cyclic_predecessor_and_first",
     "process_permutations",
     "process_pred_as_input",

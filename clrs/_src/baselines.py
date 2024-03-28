@@ -37,6 +37,8 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 
+from clrs._src.latents_config import latents_config
+
 
 _Array = chex.Array
 _DataPoint = probing.DataPoint
@@ -385,12 +387,21 @@ class BaselineModel(model.Model):
 
     rng_keys = _maybe_pmap_rng_key(rng_key)  # pytype: disable=wrong-arg-types  # numpy-scalars
     features = _maybe_pmap_data(features)
-    return _maybe_restack_from_pmap(
-        self.jitted_predict(
+
+    if self.latents_config.save_latents_flag:
+      return _maybe_restack_from_pmap(
+        self._predict(
             self._device_params, rng_keys, features,
             algorithm_index,
             return_hints,
             return_all_outputs))
+    else:
+      return _maybe_restack_from_pmap(
+          self.jitted_predict(
+              self._device_params, rng_keys, features,
+              algorithm_index,
+              return_hints,
+              return_all_outputs))
 
   def _loss(self, params, rng_key, feedback, algorithm_index):
     """Calculates model loss f(feedback; params)."""
