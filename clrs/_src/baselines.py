@@ -388,7 +388,7 @@ class BaselineModel(model.Model):
     rng_keys = _maybe_pmap_rng_key(rng_key)  # pytype: disable=wrong-arg-types  # numpy-scalars
     features = _maybe_pmap_data(features)
 
-    if self.latents_config.save_latents_flag:
+    if latents_config.save_latents_flag:
       return _maybe_restack_from_pmap(
         self._predict(
             self._device_params, rng_keys, features,
