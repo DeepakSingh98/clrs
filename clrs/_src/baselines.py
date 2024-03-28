@@ -394,13 +394,13 @@ class BaselineModel(model.Model):
             repred=True, algorithm_index=algorithm_index,
             return_hints=True,
             return_all_outputs=False)
-        outs = decoders.postprocess(self._spec[algorithm_index],
+      outs = decoders.postprocess(self._spec[algorithm_index],
                                     outs,
                                     sinkhorn_temperature=0.1,
                                     sinkhorn_steps=50,
                                     hard=True,
                                     )
-        return _maybe_restack_from_pmap(outs), _maybe_restack_from_pmap(hint_preds)
+      return _maybe_restack_from_pmap(outs), _maybe_restack_from_pmap(hint_preds)
     else:
       return _maybe_restack_from_pmap(
           self.jitted_predict(
