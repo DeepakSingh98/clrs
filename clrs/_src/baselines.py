@@ -389,12 +389,18 @@ class BaselineModel(model.Model):
     features = _maybe_pmap_data(features)
 
     if latents_config.save_latents_flag:
-      return _maybe_restack_from_pmap(
-        self._predict(
-            self._device_params, rng_keys, features,
-            algorithm_index,
-            return_hints,
-            return_all_outputs))
+      outs, hint_preds = self.net_fn.apply(
+            self._device_params, rng_keys, [features],
+            repred=True, algorithm_index=algorithm_index,
+            return_hints=True,
+            return_all_outputs=False)
+        outs = decoders.postprocess(self._spec[algorithm_index],
+                                    outs,
+                                    sinkhorn_temperature=0.1,
+                                    sinkhorn_steps=50,
+                                    hard=True,
+                                    )
+        return _maybe_restack_from_pmap(outs), _maybe_restack_from_pmap(hint_preds)
     else:
       return _maybe_restack_from_pmap(
           self.jitted_predict(
