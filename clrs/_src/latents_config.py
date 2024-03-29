@@ -17,7 +17,7 @@ class LatentsConfig:
     
     def accumulate_callback(self, latents):
 
-        def accumulate_latents(self, latents):
+        def accumulate_latents(latents):
             self.latents_list.append(latents)
             print("Number of batches processed:", len(self.latents_list))
 
