@@ -324,7 +324,7 @@ class BaselineModel(model.Model):
   def _predict(self, params, rng_key: hk.PRNGSequence, features: _Features,
                algorithm_index: int, return_hints: bool,
                return_all_outputs: bool):
-    outs, hint_preds = self.net_fn.apply(
+    outs, hint_preds, latents = self.net_fn.apply(
         params, rng_key, [features],
         repred=True, algorithm_index=algorithm_index,
         return_hints=return_hints,
@@ -335,7 +335,7 @@ class BaselineModel(model.Model):
                                 sinkhorn_steps=50,
                                 hard=True,
                                 )
-    return outs, hint_preds
+    return outs, hint_preds, latents
 
   def compute_grad(
       self,

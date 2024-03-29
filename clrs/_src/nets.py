@@ -50,6 +50,7 @@ class _MessagePassingScanState:
   output_preds: chex.Array
   hiddens: chex.Array
   lstm_state: Optional[hk.LSTMState]
+  latents: Optional[chex.Array]
 
 
 @chex.dataclass
@@ -162,7 +163,7 @@ class Net(hk.Module):
             probing.DataPoint(
                 name=hint.name, location=loc, type_=typ, data=hint_data))
 
-    hiddens, output_preds_cand, hint_preds, lstm_state = self._one_step_pred(
+    hiddens, output_preds_cand, hint_preds, lstm_state, latents = self._one_step_pred(
         inputs, cur_hint, mp_state.hiddens,
         batch_size, nb_nodes, mp_state.lstm_state,
         spec, encs, decs, repred)
@@ -181,12 +182,13 @@ class Net(hk.Module):
         hint_preds=hint_preds,
         output_preds=output_preds,
         hiddens=hiddens,
-        lstm_state=lstm_state)
+        lstm_state=lstm_state,
+        latents=latents)
     # Save memory by not stacking unnecessary fields
     accum_mp_state = _MessagePassingScanState(  # pytype: disable=wrong-arg-types  # numpy-scalars
         hint_preds=hint_preds if return_hints else None,
         output_preds=output_preds if return_all_outputs else None,
-        hiddens=None, lstm_state=None)
+        hiddens=None, lstm_state=None, latents=latents)
 
     # Complying to jax.scan, the first returned value is the state we carry over
     # the second value is the output that will be stacked over steps.
@@ -263,7 +265,7 @@ class Net(hk.Module):
 
       mp_state = _MessagePassingScanState(  # pytype: disable=wrong-arg-types  # numpy-scalars
           hint_preds=None, output_preds=None,
-          hiddens=hiddens, lstm_state=lstm_state)
+          hiddens=hiddens, lstm_state=lstm_state, latents=None)
 
       # Do the first step outside of the scan because it has a different
       # computation graph.
@@ -317,8 +319,9 @@ class Net(hk.Module):
     else:
       output_preds = output_mp_state.output_preds
     hint_preds = invert(accum_mp_state.hint_preds)
+    latents = accum_mp_state.latents
 
-    return output_preds, hint_preds
+    return output_preds, hint_preds, latents
 
   def _construct_encoders_decoders(self):
     """Constructs encoders and decoders, separate for each algorithm."""
@@ -399,7 +402,7 @@ class Net(hk.Module):
     # PROCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     nxt_hidden = hidden
     for _ in range(self.nb_msg_passing_steps):
-      nxt_hidden, nxt_edge = self.processor(
+      nxt_hidden, nxt_edge, latents = self.processor(
           node_fts,
           edge_fts,
           graph_fts,
@@ -439,7 +442,7 @@ class Net(hk.Module):
         repred=repred,
     )
 
-    return nxt_hidden, output_preds, hint_preds, nxt_lstm_state
+    return nxt_hidden, output_preds, hint_preds, nxt_lstm_state, latents
 
 
 class NetChunked(Net):
