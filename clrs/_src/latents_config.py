@@ -1,4 +1,6 @@
 import os
+import numpy as np
+from absl import logging
 
 class LatentsConfig:
     def __init__(self):
@@ -11,5 +13,10 @@ class LatentsConfig:
         os.makedirs(latents_dir, exist_ok=True)
         latents_filepath = os.path.join(latents_dir, f'{algorithms[algo_index]}.npz')
         self.filepath = latents_filepath
+    
+    def save_latents(self, latents):
+        latent_arrays = {key: np.array(latents[key]) for key in latents.keys()}
+        np.savez(self.filepath, **latent_arrays)
+        logging.info('Latents saved to', self.filepath)
 
 latents_config = LatentsConfig()
