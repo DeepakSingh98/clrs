@@ -17,6 +17,6 @@ class LatentsConfig:
     def save_latents(self, latents):
         latent_arrays = {key: np.array(latents[key]) for key in latents.keys()}
         np.savez(self.filepath, **latent_arrays)
-        logging.info('Latents saved to', self.filepath)
+        logging.info('Latents saved to %s', self.filepath)
 
 latents_config = LatentsConfig()
