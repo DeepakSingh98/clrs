@@ -14,14 +14,20 @@ class LatentsConfig:
             algo_index, 
             algorithms, 
             seed, 
-            processor_type):
+            processor_type,
+            hint_mode):
         
         if len(algorithms) > 1 or "multi_task" in checkpoint_path:
             task_type = "multi_task"
         else:
             task_type = "single_task"
-            
-        latents_dir = os.path.join(latents_path, task_type, f'{processor_type}_{seed}')
+
+        if hint_mode == "none":
+            hint_str = "no_hint_"
+        else:
+            hint_str = ""
+
+        latents_dir = os.path.join(latents_path, task_type, f'{processor_type}_{hint_str}{seed}')
         os.makedirs(latents_dir, exist_ok=True)
         latents_filepath = os.path.join(latents_dir, f'{algorithms[algo_index]}.npz')
         self.filepath = latents_filepath
