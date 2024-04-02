@@ -4,7 +4,7 @@ from absl import logging
 
 class LatentsConfig:
     def __init__(self):
-        self.save_latents_flag = False
+        self.save_latents = None
         self.filepath = None
 
     def set_latents_filepath(
@@ -32,7 +32,7 @@ class LatentsConfig:
         latents_filepath = os.path.join(latents_dir, f'{algorithms[algo_index]}.npz')
         self.filepath = latents_filepath
     
-    def save_latents(self, latents):
+    def save_latents_to_file(self, latents):
         latent_arrays = {key: np.array(latents[key]) for key in latents.keys()}
         np.savez(self.filepath, **latent_arrays)
         logging.info('Latents saved to %s', self.filepath)
