@@ -401,7 +401,6 @@ class Net(hk.Module):
 
     # PROCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     nxt_hidden = hidden
-    breakpoint()
     for _ in range(self.nb_msg_passing_steps):
       nxt_hidden, nxt_edge, latents = self.processor(
           node_fts,
