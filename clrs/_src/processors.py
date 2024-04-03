@@ -502,7 +502,6 @@ class PGN(Processor):
       ret = ret * gate + hidden * (1-gate)
     
     if latents_config.save_latents:
-      breakpoint()
       potential_latents = {'z': z, 'msgs': msgs, 'tri_msgs': tri_msgs, 'ret': ret}
       saved_latents = {key: value for key, value in potential_latents.items() 
                           if key in latents_config.save_latents}
