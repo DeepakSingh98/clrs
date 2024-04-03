@@ -500,9 +500,9 @@ class PGN(Processor):
       gate3 = hk.Linear(self.out_size, b_init=hk.initializers.Constant(-3))
       gate = jax.nn.sigmoid(gate3(jax.nn.relu(gate1(z) + gate2(msgs))))
       ret = ret * gate + hidden * (1-gate)
-      breakpoint()
     
     if latents_config.save_latents:
+      breakpoint()
       potential_latents = {'z': z, 'msgs': msgs, 'tri_msgs': tri_msgs, 'ret': ret}
       saved_latents = {key: value for key, value in potential_latents.items() 
                           if key in latents_config.save_latents}
