@@ -324,6 +324,7 @@ class BaselineModel(model.Model):
   def _predict(self, params, rng_key: hk.PRNGSequence, features: _Features,
                algorithm_index: int, return_hints: bool,
                return_all_outputs: bool):
+    breakpoint()
     outs, hint_preds, latents = self.net_fn.apply(
         params, rng_key, [features],
         repred=True, algorithm_index=algorithm_index,
