@@ -6,6 +6,7 @@ class LatentsConfig:
     def __init__(self):
         self.save_latents = None
         self.filepath = None
+        self.use_shared_latent_space = False
 
     def set_latents_filepath(
             self, 

@@ -47,6 +47,7 @@ from clrs._src.specs import Location
 from clrs._src.specs import OutputClass
 from clrs._src.specs import Spec
 from clrs._src.specs import SPECS
+from clrs._src.specs import SHARED_SORTING_SPECS
 from clrs._src.specs import Stage
 from clrs._src.specs import Type
 
@@ -78,6 +79,7 @@ __all__ = (
     "Sampler",
     "Spec",
     "SPECS",
+    "SHARED_SORTING_SPECS",
     "Stage",
     "Trajectory",
     "Type",

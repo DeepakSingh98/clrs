@@ -28,6 +28,13 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+from clrs._src.latents_config import latents_config
+
+if latents_config.use_shared_latent_space:
+  SPECS = specs.SHARED_SORTING_SPECS
+else:
+  SPECS = specs.SPECS
+  
 
 def _correct_axis_filtering(tensor, index, name):
   if 'hint_' in name:
@@ -159,7 +166,7 @@ def _preprocess(data_point, algorithm=None):
       continue
     data_point_name = name.split('_')
     name = '_'.join(data_point_name[1:])
-    (stage, location, dp_type) = specs.SPECS[algorithm][name]
+    (stage, location, dp_type) = SPECS[algorithm][name]
     assert stage == data_point_name[0]
     if stage == specs.Stage.HINT:
       data = tf.experimental.numpy.swapaxes(data, 0, 1)
@@ -180,9 +187,11 @@ def create_dataset(folder, algorithm, split, batch_size):
   num_samples = len(dataset)  # Must be done here for correct size
   dataset = dataset.repeat()
   dataset = dataset.batch(batch_size)
+
+  if 
   return (dataset.map(lambda d: _preprocess(d, algorithm=algorithm)),
           num_samples,
-          specs.SPECS[algorithm])
+          SPECS[algorithm])
 
 
 def _copy_hint(source, dest, i, start_source, start_dest, to_add):
@@ -323,4 +332,4 @@ def create_chunked_dataset(folder, algorithm, split, batch_size, chunk_length):
   dataset = dataset.batch(batch_size)
   dataset = dataset.map(lambda d: _preprocess(d, algorithm=algorithm))
   dataset = dataset.as_numpy_iterator()
-  return chunkify(dataset, chunk_length), specs.SPECS[algorithm]
+  return chunkify(dataset, chunk_length), SPECS[algorithm]

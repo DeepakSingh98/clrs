@@ -29,6 +29,8 @@ import numpy as np
 import requests
 import tensorflow as tf
 
+from clrs._src.latents_config import latents_config
+
 
 flags.DEFINE_list('algorithms', ['bfs'], 'Which algorithms to run.')
 flags.DEFINE_list('train_lengths', ['4', '7', '11', '13', '16'],
@@ -118,6 +120,17 @@ flags.DEFINE_string('dataset_path', '/tmp/CLRS30',
                     'Path in which dataset is stored.')
 flags.DEFINE_boolean('freeze_processor', False,
                      'Whether to freeze the processor of the model.')
+
+flags.DEFINE_list('save_latents', None,
+                  'List of latents to save. If None, no latents are saved.')
+flags.DEFINE_string('latents_path', '/tmp/CLRS30',
+                    'Path in which latents are stored.')
+
+flags.DEFINE_integer('multiplier', None,
+                      'Multiplier for the number of test samples.')
+
+flags.DEFINE_boolean('use_shared_latent_space', False,
+                      'Whether to use a shared latent space for algorithms.')
 
 FLAGS = flags.FLAGS
 
@@ -209,6 +222,8 @@ def make_sampler(length: int,
                                                      batch_size=batch_size,
                                                      split=split)
     sampler = sampler.as_numpy_iterator()
+    if split=="test":
+      num_samples *= multiplier
   else:
     num_samples = clrs.CLRS30[split]['num_samples'] * multiplier
     sampler, spec = clrs.build_sampler(
@@ -255,20 +270,46 @@ def collect_and_eval(sampler, predict_fn, sample_count, rng_key, extras):
   processed_samples = 0
   preds = []
   outputs = []
+
   while processed_samples < sample_count:
     feedback = next(sampler)
     batch_size = feedback.outputs[0].data.shape[0]
     outputs.append(feedback.outputs)
     new_rng_key, rng_key = jax.random.split(rng_key)
-    cur_preds, _ = predict_fn(new_rng_key, feedback.features)
+    cur_preds, _, _ = predict_fn(new_rng_key, feedback.features)
     preds.append(cur_preds)
     processed_samples += batch_size
+
   outputs = _concat(outputs, axis=0)
   preds = _concat(preds, axis=0)
   out = clrs.evaluate(outputs, preds)
   if extras:
     out.update(extras)
+
   return {k: unpack(v) for k, v in out.items()}
+
+
+def extract_latents(sampler, predict_fn, sample_count, rng_key, extras):
+    """Collect batches of latents and save them."""
+    processed_samples = 0
+    latents = []
+    execution_lengths = []
+
+    while processed_samples < sample_count:
+        feedback = next(sampler)
+        batch_size = feedback.outputs[0].data.shape[0]
+        execution_lengths.extend(feedback.features.lengths.tolist()) 
+        new_rng_key, rng_key = jax.random.split(rng_key)
+        _, _, cur_latents = predict_fn(new_rng_key, feedback.features)
+        latents.append(cur_latents)
+        processed_samples += batch_size
+    latents = _concat(latents, axis=1)
+
+    most_common_length = max(execution_lengths, key=execution_lengths.count)
+    mask = np.array([length == most_common_length for length in execution_lengths])
+    latents = {k: v[:, mask] for k, v in latents.items()}
+    latents = {k: np.transpose(v, axes=(1, 2, 3, 0)) for k, v in latents.items()}
+    latents_config.save_latents_to_file(np.array(latents))
 
 
 def create_samplers(rng, train_lengths: List[int]):
@@ -327,7 +368,11 @@ def create_samplers(rng, train_lengths: List[int]):
                         **common_sampler_args)
       train_sampler, _, spec = make_multi_sampler(**train_args)
 
-      mult = clrs.CLRS_30_ALGS_SETTINGS[algorithm]['num_samples_multiplier']
+      if FLAGS.multiplier:
+        mult = FLAGS.multiplier 
+      else:
+        mult = clrs.CLRS_30_ALGS_SETTINGS[algorithm]['num_samples_multiplier']
+
       val_args = dict(sizes=[np.amax(train_lengths)],
                       split='val',
                       batch_size=32,
@@ -413,7 +458,7 @@ def main(unused_argv):
       dummy_trajectory=[next(t) for t in val_samplers],
       **model_params
   )
-  if FLAGS.chunked_training:
+  if FLAGS.chunked_training or FLAGS.train_steps == 0: # ie only evaluate
     train_model = clrs.models.BaselineModelChunked(
         spec=spec_list,
         dummy_trajectory=[next(t) for t in train_samplers],
@@ -470,16 +515,16 @@ def main(unused_argv):
         examples_in_chunk = len(feedback.features.lengths)
       current_train_items[algo_idx] += examples_in_chunk
       logging.info('Algo %s step %i current loss %f, current_train_items %i.',
-                   FLAGS.algorithms[algo_idx], step,
-                   cur_loss, current_train_items[algo_idx])
+                  FLAGS.algorithms[algo_idx], step,
+                  cur_loss, current_train_items[algo_idx])
 
     # Periodically evaluate model
     if step >= next_eval:
       eval_model.params = train_model.params
       for algo_idx in range(len(train_samplers)):
         common_extras = {'examples_seen': current_train_items[algo_idx],
-                         'step': step,
-                         'algorithm': FLAGS.algorithms[algo_idx]}
+                        'step': step,
+                        'algorithm': FLAGS.algorithms[algo_idx]}
 
         # Validation info.
         new_rng_key, rng_key = jax.random.split(rng_key)
@@ -490,7 +535,7 @@ def main(unused_argv):
             new_rng_key,
             extras=common_extras)
         logging.info('(val) algo %s step %d: %s',
-                     FLAGS.algorithms[algo_idx], step, val_stats)
+                    FLAGS.algorithms[algo_idx], step, val_stats)
         val_scores[algo_idx] = val_stats['score']
 
       next_eval += FLAGS.eval_every
@@ -498,9 +543,9 @@ def main(unused_argv):
       # If best total score, update best checkpoint.
       # Also save a best checkpoint on the first step.
       msg = (f'best avg val score was '
-             f'{best_score/len(FLAGS.algorithms):.3f}, '
-             f'current avg val score is {np.mean(val_scores):.3f}, '
-             f'val scores are: ')
+            f'{best_score/len(FLAGS.algorithms):.3f}, '
+            f'current avg val score is {np.mean(val_scores):.3f}, '
+            f'val scores are: ')
       msg += ', '.join(
           ['%s: %.3f' % (x, y) for (x, y) in zip(FLAGS.algorithms, val_scores)])
       if (sum(val_scores) > best_score) or step == 0:
@@ -513,6 +558,9 @@ def main(unused_argv):
     step += 1
     length_idx = (length_idx + 1) % len(train_lengths)
 
+  # Set save latents true after init
+  latents_config.save_latents = FLAGS.save_latents
+
   logging.info('Restoring best model from checkpoint...')
   eval_model.restore_model('best.pkl', only_load_processor=False)
 
@@ -520,18 +568,31 @@ def main(unused_argv):
     common_extras = {'examples_seen': current_train_items[algo_idx],
                      'step': step,
                      'algorithm': FLAGS.algorithms[algo_idx]}
-
     new_rng_key, rng_key = jax.random.split(rng_key)
-    test_stats = collect_and_eval(
-        test_samplers[algo_idx],
-        functools.partial(eval_model.predict, algorithm_index=algo_idx),
-        test_sample_counts[algo_idx],
-        new_rng_key,
-        extras=common_extras)
-    logging.info('(test) algo %s : %s', FLAGS.algorithms[algo_idx], test_stats)
+    eval_args = dict(
+        sampler=test_samplers[algo_idx],
+        predict_fn=functools.partial(eval_model.predict, algorithm_index=algo_idx),
+        sample_count=test_sample_counts[algo_idx],
+        rng_key=new_rng_key,
+        extras=common_extras,
+    )
+    if FLAGS.save_latents:
+      latents_config.set_latents_filepath(
+        FLAGS.latents_path, 
+        FLAGS.checkpoint_path, 
+        algo_idx,
+        FLAGS.algorithms, 
+        FLAGS.seed, 
+        FLAGS.processor_type,
+        FLAGS.hint_mode,
+        )
+      extract_latents(**eval_args)
+
+    else:
+      test_stats = collect_and_eval(**eval_args)
+      logging.info('(test) algo %s : %s', FLAGS.algorithms[algo_idx], test_stats)
 
   logging.info('Done!')
-
 
 if __name__ == '__main__':
   app.run(main)

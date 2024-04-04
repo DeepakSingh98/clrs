@@ -29,6 +29,12 @@ from clrs._src import specs
 import jax
 import numpy as np
 
+from clrs._src.latents_config import latents_config
+
+if latents_config.use_shared_latent_space:
+  SPECS = specs.SHARED_SORTING_SPECS
+else:
+  SPECS = specs.SPECS
 
 _Array = np.ndarray
 _DataPoint = probing.DataPoint
@@ -267,7 +273,7 @@ def build_sampler(
 
   if name not in specs.SPECS or name not in SAMPLERS:
     raise NotImplementedError(f'No implementation of algorithm {name}.')
-  spec = specs.SPECS[name]
+  spec = SPECS[name]
   algorithm = getattr(algorithms, name)
   sampler_class = SAMPLERS[name]
   # Ignore kwargs not accepted by the sampler.
