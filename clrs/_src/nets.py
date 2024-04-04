@@ -329,7 +329,7 @@ class Net(hk.Module):
     encoders_ = []
     decoders_ = []
 
-    if latents_config.use_shared_sorting_specs:
+    if latents_config.use_shared_latent_space:
       # Create shared encoders and decoders for sorting algorithms
       sort_enc = {}
       sort_dec = {}

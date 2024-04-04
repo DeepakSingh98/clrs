@@ -187,8 +187,6 @@ def create_dataset(folder, algorithm, split, batch_size):
   num_samples = len(dataset)  # Must be done here for correct size
   dataset = dataset.repeat()
   dataset = dataset.batch(batch_size)
-
-  if 
   return (dataset.map(lambda d: _preprocess(d, algorithm=algorithm)),
           num_samples,
           SPECS[algorithm])

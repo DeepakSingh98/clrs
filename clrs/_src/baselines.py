@@ -394,7 +394,7 @@ class BaselineModel(model.Model):
 
   def _loss(self, params, rng_key, feedback, algorithm_index):
     """Calculates model loss f(feedback; params)."""
-    output_preds, hint_preds = self.net_fn.apply(
+    output_preds, hint_preds, _ = self.net_fn.apply(
         params, rng_key, [feedback.features],
         repred=False,
         algorithm_index=algorithm_index,
