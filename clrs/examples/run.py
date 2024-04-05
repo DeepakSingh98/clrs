@@ -481,6 +481,9 @@ def main(unused_argv):
   val_scores = [-99999.9] * len(FLAGS.algorithms)
   length_idx = 0
 
+  # Turn off latent saving during training
+  latents_config.save_latents = None
+
   while step < FLAGS.train_steps:
     feedback_list = [next(t) for t in train_samplers]
 
@@ -562,7 +565,7 @@ def main(unused_argv):
     step += 1
     length_idx = (length_idx + 1) % len(train_lengths)
 
-  # Set save latents true after init
+  # Set save latents to the user specified value
   latents_config.save_latents = FLAGS.save_latents
 
   logging.info('Restoring best model from checkpoint...')
