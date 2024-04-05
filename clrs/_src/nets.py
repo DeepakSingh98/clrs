@@ -561,7 +561,7 @@ class NetChunked(Net):
           mp_state.lstm_state)
     else:
       lstm_state = None
-    hiddens, output_preds, hint_preds, lstm_state = self._one_step_pred(
+    hiddens, output_preds, hint_preds, lstm_state, _ = self._one_step_pred(
         inputs, hints_for_pred, hiddens,
         batch_size, nb_nodes, lstm_state,
         spec, encs, decs, repred)
