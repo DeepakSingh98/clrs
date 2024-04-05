@@ -595,9 +595,8 @@ def main(unused_argv):
         )
       extract_latents(**eval_args)
 
-    else:
-      test_stats = collect_and_eval(**eval_args)
-      logging.info('(test) algo %s : %s', FLAGS.algorithms[algo_idx], test_stats)
+    test_stats = collect_and_eval(**eval_args)
+    logging.info('(test) algo %s : %s', FLAGS.algorithms[algo_idx], test_stats)
 
   logging.info('Done!')
 
