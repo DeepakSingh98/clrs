@@ -410,6 +410,9 @@ def create_samplers(rng, train_lengths: List[int]):
 
 
 def main(unused_argv):
+
+  latents_config.use_shared_latent_space = FLAGS.use_shared_latent_space
+
   if FLAGS.hint_mode == 'encoded_decoded':
     encode_hints = True
     decode_hints = True

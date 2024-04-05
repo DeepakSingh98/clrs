@@ -277,12 +277,23 @@ class Net(hk.Module):
           batch_size=batch_size,
           nb_nodes=nb_nodes,
           lengths=lengths,
-          spec=self.spec[algorithm_index],
-          encs=self.encoders[algorithm_index],
-          decs=self.decoders[algorithm_index],
           return_hints=return_hints,
           return_all_outputs=return_all_outputs,
           )
+      
+      if latents_config.use_shared_latent_space:
+        common_args.update(
+          spec=specs.SHARED_SORTING_SPECS,
+          encs=self.encoders[0],
+          decs=self.decoders[0],
+          )
+      else:
+        common_args.update(
+          spec=self.spec[algorithm_index],
+          encs=self.encoders[algorithm_index],
+          decs=self.decoders[algorithm_index],
+          )
+
       mp_state, lean_mp_state = self._msg_passing_step(
           mp_state,
           i=0,
@@ -330,7 +341,7 @@ class Net(hk.Module):
     decoders_ = []
 
     if latents_config.use_shared_latent_space:
-      # Create shared encoders and decoders for sorting algorithms
+      # Create a shared encoder and decoder for all sorting algorithms
       sort_enc = {}
       sort_dec = {}
       for name, (stage, loc, t) in specs.SHARED_SORTING_SPECS.items():
