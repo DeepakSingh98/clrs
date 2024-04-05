@@ -88,6 +88,8 @@ flags.DEFINE_enum('hint_mode', 'encoded_decoded',
                   'counterbalance the various hint losses. Hence, for certain '
                   'tasks, the best performance will now be achievable with no '
                   'hint usage at all (`none`).')
+flags.DEFINE_boolean('ssl_regularization', False,
+                     'Whether to compute contrastive loss on intermediate steps')
 flags.DEFINE_enum('hint_repred_mode', 'soft', ['soft', 'hard', 'hard_on_eval'],
                   'How to process predicted hints when fed back as inputs.'
                   'In soft mode, we use softmaxes for categoricals, pointers '
@@ -226,6 +228,7 @@ def make_sampler(length: int,
       num_samples *= multiplier
   else:
     num_samples = clrs.CLRS30[split]['num_samples'] * multiplier
+    augment_count = 1 if FLAGS.ssl_regularization and split == 'train' else 0
     sampler, spec = clrs.build_sampler(
         algorithm,
         seed=rng.randint(2**32),
@@ -441,6 +444,7 @@ def main(unused_argv):
       hidden_dim=FLAGS.hidden_size,
       encode_hints=encode_hints,
       decode_hints=decode_hints,
+      ssl_reg=FLAGS.ssl_regularization,
       encoder_init=FLAGS.encoder_init,
       use_lstm=FLAGS.use_lstm,
       learning_rate=FLAGS.learning_rate,

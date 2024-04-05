@@ -144,6 +144,7 @@ class BaselineModel(model.Model):
       hidden_dim: int = 32,
       encode_hints: bool = False,
       decode_hints: bool = True,
+      ssl_reg: bool = False,
       encoder_init: str = 'default',
       use_lstm: bool = False,
       learning_rate: float = 0.005,
@@ -211,6 +212,7 @@ class BaselineModel(model.Model):
     assert hint_repred_mode in ['soft', 'hard', 'hard_on_eval']
 
     self.decode_hints = decode_hints
+    self.ssl_reg = ssl_reg
     self.checkpoint_path = checkpoint_path
     self.name = name
     self._freeze_processor = freeze_processor
@@ -414,7 +416,7 @@ class BaselineModel(model.Model):
       )
 
     # Optionally accumulate hint losses.
-    if self.decode_hints:
+    if self.decode_hints and self.ssl_reg:
       for truth in feedback.features.hints:
         total_loss += losses.hint_loss(
             truth=truth,
