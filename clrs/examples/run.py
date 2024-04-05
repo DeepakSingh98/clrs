@@ -312,7 +312,7 @@ def extract_latents(sampler, predict_fn, sample_count, rng_key, extras):
     mask = np.array([length == most_common_length for length in execution_lengths])
     latents = {k: v[:, mask] for k, v in latents.items()}
     latents = {k: np.transpose(v, axes=(1, 2, 3, 0)) for k, v in latents.items()}
-    latents_config.save_latents_to_file(np.array(latents))
+    latents_config.save_latents_to_file(latents)
 
 
 def create_samplers(rng, train_lengths: List[int]):
