@@ -37,7 +37,7 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 
-from clrs._src.latents_config import latents_config
+# from clrs._src.latents_config import latents_config
 
 
 _Array = chex.Array
@@ -333,11 +333,11 @@ class BaselineModel(model.Model):
         repred=True, algorithm_index=algorithm_index,
         return_hints=return_hints,
         return_all_outputs=return_all_outputs)
-    if latents_config.use_shared_latent_space:
-      decoding_spec = self._spec[0]
-    else:
-      decoding_spec = self._spec[algorithm_index]
-    outs = decoders.postprocess(decoding_spec,
+    # if latents_config.use_shared_latent_space:
+    #   decoding_spec = self._spec[0]
+    # else:
+    #   decoding_spec = self._spec[algorithm_index]
+    outs = decoders.postprocess(self._spec[algorithm_index],
                                 outs,
                                 sinkhorn_temperature=0.1,
                                 sinkhorn_steps=50,
