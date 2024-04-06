@@ -524,9 +524,8 @@ SPECS = types.MappingProxyType({
     }
 })
 
-# Since these are the same, we only need one
 SHARED_SORTING_SPECS = types.MappingProxyType({
-    'shared_sorting_specs': {
+    'insertion_sort': {
     'pos': (Stage.INPUT, Location.NODE, Type.SCALAR),
     'key': (Stage.INPUT, Location.NODE, Type.SCALAR),
     'pred': (Stage.OUTPUT, Location.NODE, Type.SHOULD_BE_PERMUTATION),
@@ -540,64 +539,47 @@ SHARED_SORTING_SPECS = types.MappingProxyType({
     'p': (Stage.HINT, Location.NODE, Type.MASK_ONE),
     'r': (Stage.HINT, Location.NODE, Type.MASK_ONE),
     },
+    'bubble_sort': {
+    'pos': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'key': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'pred': (Stage.OUTPUT, Location.NODE, Type.SHOULD_BE_PERMUTATION),
+    'pred_h': (Stage.HINT, Location.NODE, Type.POINTER),
+    'i': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    'j': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    'parent': (Stage.HINT, Location.NODE, Type.POINTER),
+    'largest': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    'heap_size': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    'phase': (Stage.HINT, Location.GRAPH, Type.CATEGORICAL),
+    'p': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    'r': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    },
+    'heapsort': {
+    'pos': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'key': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'pred': (Stage.OUTPUT, Location.NODE, Type.SHOULD_BE_PERMUTATION),
+    'pred_h': (Stage.HINT, Location.NODE, Type.POINTER),
+    'parent': (Stage.HINT, Location.NODE, Type.POINTER),
+    'i': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    'j': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    'largest': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    'heap_size': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    'phase': (Stage.HINT, Location.GRAPH, Type.CATEGORICAL),
+    'p': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    'r': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    },
+    'quicksort': {
+    'pos': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'key': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'pred': (Stage.OUTPUT, Location.NODE, Type.SHOULD_BE_PERMUTATION),
+    'pred_h': (Stage.HINT, Location.NODE, Type.POINTER),
+    'i': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    'j': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    'parent': (Stage.HINT, Location.NODE, Type.POINTER),
+    'largest': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    'heap_size': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    'phase': (Stage.HINT, Location.GRAPH, Type.CATEGORICAL),
+    'p': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    'r': (Stage.HINT, Location.NODE, Type.MASK_ONE),
+    }
 })
-
-# SHARED_SORTING_SPECS = types.MappingProxyType({
-#     'insertion_sort': {
-#     'pos': (Stage.INPUT, Location.NODE, Type.SCALAR),
-#     'key': (Stage.INPUT, Location.NODE, Type.SCALAR),
-#     'pred': (Stage.OUTPUT, Location.NODE, Type.SHOULD_BE_PERMUTATION),
-#     'pred_h': (Stage.HINT, Location.NODE, Type.POINTER),
-#     'i': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'j': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'parent': (Stage.HINT, Location.NODE, Type.POINTER),
-#     'largest': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'heap_size': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'phase': (Stage.HINT, Location.GRAPH, Type.CATEGORICAL),
-#     'p': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'r': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     },
-#     'bubble_sort': {
-#     'pos': (Stage.INPUT, Location.NODE, Type.SCALAR),
-#     'key': (Stage.INPUT, Location.NODE, Type.SCALAR),
-#     'pred': (Stage.OUTPUT, Location.NODE, Type.SHOULD_BE_PERMUTATION),
-#     'pred_h': (Stage.HINT, Location.NODE, Type.POINTER),
-#     'i': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'j': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'parent': (Stage.HINT, Location.NODE, Type.POINTER),
-#     'largest': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'heap_size': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'phase': (Stage.HINT, Location.GRAPH, Type.CATEGORICAL),
-#     'p': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'r': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     },
-#     'heapsort': {
-#     'pos': (Stage.INPUT, Location.NODE, Type.SCALAR),
-#     'key': (Stage.INPUT, Location.NODE, Type.SCALAR),
-#     'pred': (Stage.OUTPUT, Location.NODE, Type.SHOULD_BE_PERMUTATION),
-#     'pred_h': (Stage.HINT, Location.NODE, Type.POINTER),
-#     'parent': (Stage.HINT, Location.NODE, Type.POINTER),
-#     'i': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'j': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'largest': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'heap_size': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'phase': (Stage.HINT, Location.GRAPH, Type.CATEGORICAL),
-#     'p': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'r': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     },
-#     'quicksort': {
-#     'pos': (Stage.INPUT, Location.NODE, Type.SCALAR),
-#     'key': (Stage.INPUT, Location.NODE, Type.SCALAR),
-#     'pred': (Stage.OUTPUT, Location.NODE, Type.SHOULD_BE_PERMUTATION),
-#     'pred_h': (Stage.HINT, Location.NODE, Type.POINTER),
-#     'i': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'j': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'parent': (Stage.HINT, Location.NODE, Type.POINTER),
-#     'largest': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'heap_size': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'phase': (Stage.HINT, Location.GRAPH, Type.CATEGORICAL),
-#     'p': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     'r': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-#     }
-# })
     
