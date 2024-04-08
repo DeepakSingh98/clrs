@@ -212,25 +212,29 @@ def decode_fts(
 
   for name in decoders:
     decoder = decoders[name]
-    stage, loc, t = spec[name]
 
-    if loc == _Location.NODE:
-      preds = _decode_node_fts(decoder, t, h_t, edge_fts, adj_mat,
-                               inf_bias, repred)
-    elif loc == _Location.EDGE:
-      preds = _decode_edge_fts(decoder, t, h_t, edge_fts, adj_mat,
-                               inf_bias_edge)
-    elif loc == _Location.GRAPH:
-      preds = _decode_graph_fts(decoder, t, h_t, graph_fts)
+    if name in spec:
+        stage, loc, t = spec[name]
+    
+        if loc == _Location.NODE:
+          preds = _decode_node_fts(decoder, t, h_t, edge_fts, adj_mat,
+                                   inf_bias, repred)
+        elif loc == _Location.EDGE:
+          preds = _decode_edge_fts(decoder, t, h_t, edge_fts, adj_mat,
+                                   inf_bias_edge)
+        elif loc == _Location.GRAPH:
+          preds = _decode_graph_fts(decoder, t, h_t, graph_fts)
+        else:
+          raise ValueError("Invalid output type")
+    
+        if stage == _Stage.OUTPUT:
+          output_preds[name] = preds
+        elif stage == _Stage.HINT:
+          hint_preds[name] = preds
+        else:
+          raise ValueError(f"Found unexpected decoder {name}")
     else:
-      raise ValueError("Invalid output type")
-
-    if stage == _Stage.OUTPUT:
-      output_preds[name] = preds
-    elif stage == _Stage.HINT:
-      hint_preds[name] = preds
-    else:
-      raise ValueError(f"Found unexpected decoder {name}")
+        continue
 
   return hint_preds, output_preds
 

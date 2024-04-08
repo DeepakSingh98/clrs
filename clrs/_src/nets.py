@@ -333,6 +333,8 @@ class Net(hk.Module):
     enc_algo_idx = None
     all_enc_keys = set()
     all_dec_keys = set()
+    shared_encoder = {}
+    shared_decoder = {}
 
 
     for (algo_idx, spec) in enumerate(self.spec):
@@ -353,7 +355,7 @@ class Net(hk.Module):
                 init=self.encoder_init,
                 name=f'algo_{algo_idx}_{name}')
             
-          all_enc_keys.update(enc.keys())
+          all_enc_keys.add(name)
 
         if stage == _Stage.OUTPUT or (
             stage == _Stage.HINT and self.decode_hints):
@@ -363,17 +365,17 @@ class Net(hk.Module):
               nb_dims=self.nb_dims[algo_idx][name],
               name=f'algo_{algo_idx}_{name}')
           
-          all_dec_keys.update(dec.keys())
+          all_dec_keys.add(name)
 
       if latents_config.use_shared_latent_space:
-        shared_encoder = dict.fromkeys(all_enc_keys, None)
-        shared_decoder = dict.fromkeys(all_dec_keys, None)
-        
-        shared_encoder.update(enc)
-        shared_decoder.update(dec)
-
-        latents_config.shared_encoder = shared_encoder
-        latents_config.shared_decoder = shared_decoder
+            for key in all_enc_keys:
+                if key not in shared_encoder:
+                    shared_encoder[key] = enc.get(key)
+            for key in all_dec_keys:
+                if key not in shared_decoder:
+                    shared_decoder[key] = dec.get(key)
+            latents_config.shared_encoder = shared_encoder
+            latents_config.shared_decoder = shared_decoder
 
       encoders_.append(enc)
       decoders_.append(dec)
