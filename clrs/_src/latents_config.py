@@ -2,11 +2,14 @@ import os
 import numpy as np
 from absl import logging
 
+
 class LatentsConfig:
     def __init__(self):
         self.save_latents = None
         self.filepath = None
         self.use_shared_latent_space = False
+        self.shared_encoder = None
+        self.shared_decoder = None
 
     def set_latents_filepath(
             self, 
@@ -37,5 +40,6 @@ class LatentsConfig:
         latent_arrays = {key: np.array(latents[key]) for key in latents.keys()}
         np.savez(self.filepath, **latent_arrays)
         logging.info('Latents saved to %s', self.filepath)
-
+    
+    
 latents_config = LatentsConfig()

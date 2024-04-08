@@ -278,21 +278,12 @@ class Net(hk.Module):
           nb_nodes=nb_nodes,
           lengths=lengths,
           spec=self.spec[algorithm_index],
+          encs=self.encoders[algorithm_index],
+          decs=self.decoders[algorithm_index],
           return_hints=return_hints,
           return_all_outputs=return_all_outputs,
           )
       
-      if latents_config.use_shared_latent_space:
-        common_args.update(
-          encs=self.encoders, # Shared encoder
-          decs=self.decoders, # Shared decoder
-          )
-      else:
-        common_args.update(
-          encs=self.encoders[algorithm_index], # Encoder for this algorithm
-          decs=self.decoders[algorithm_index], # Decoder for this algorithm
-          )
-
       mp_state, lean_mp_state = self._msg_passing_step(
           mp_state,
           i=0,
@@ -337,10 +328,17 @@ class Net(hk.Module):
   def _construct_encoders_decoders(self):
     """Constructs encoders and decoders, separate for each algorithm."""
 
-    if latents_config.use_shared_latent_space:
+    encoders_ = []
+    decoders_ = []
+    enc_algo_idx = None
+    all_enc_keys = set()
+    all_dec_keys = set()
+
+
+    for (algo_idx, spec) in enumerate(self.spec):
       enc = {}
       dec = {}
-      for name, (stage, loc, t) in self.spec[0].items(): # All specs are the same
+      for name, (stage, loc, t) in spec.items():
         if stage == _Stage.INPUT or (
             stage == _Stage.HINT and self.encode_hints):
           # Build input encoders.
@@ -354,6 +352,8 @@ class Net(hk.Module):
                 stage, loc, t, hidden_dim=self.hidden_dim,
                 init=self.encoder_init,
                 name=f'algo_{algo_idx}_{name}')
+            
+          all_enc_keys.update(enc.keys())
 
         if stage == _Stage.OUTPUT or (
             stage == _Stage.HINT and self.decode_hints):
@@ -362,38 +362,21 @@ class Net(hk.Module):
               loc, t, hidden_dim=self.hidden_dim,
               nb_dims=self.nb_dims[algo_idx][name],
               name=f'algo_{algo_idx}_{name}')
-    
-    else:
-      encoders_ = []
-      decoders_ = []
-      enc_algo_idx = None
-      for (algo_idx, spec) in enumerate(self.spec):
-        enc = {}
-        dec = {}
-        for name, (stage, loc, t) in spec.items():
-          if stage == _Stage.INPUT or (
-              stage == _Stage.HINT and self.encode_hints):
-            # Build input encoders.
-            if name == specs.ALGO_IDX_INPUT_NAME:
-              if enc_algo_idx is None:
-                enc_algo_idx = [hk.Linear(self.hidden_dim,
-                                          name=f'{name}_enc_linear')]
-              enc[name] = enc_algo_idx
-            else:
-              enc[name] = encoders.construct_encoders(
-                  stage, loc, t, hidden_dim=self.hidden_dim,
-                  init=self.encoder_init,
-                  name=f'algo_{algo_idx}_{name}')
+          
+          all_dec_keys.update(dec.keys())
 
-          if stage == _Stage.OUTPUT or (
-              stage == _Stage.HINT and self.decode_hints):
-            # Build output decoders.
-            dec[name] = decoders.construct_decoders(
-                loc, t, hidden_dim=self.hidden_dim,
-                nb_dims=self.nb_dims[algo_idx][name],
-                name=f'algo_{algo_idx}_{name}')
-        encoders_.append(enc)
-        decoders_.append(dec)
+      if latents_config.use_shared_latent_space:
+        shared_encoder = dict.fromkeys(all_enc_keys, None)
+        shared_decoder = dict.fromkeys(all_dec_keys, None)
+        
+        shared_encoder.update(enc)
+        shared_decoder.update(dec)
+
+        latents_config.shared_encoder = shared_encoder
+        latents_config.shared_decoder = shared_decoder
+
+      encoders_.append(enc)
+      decoders_.append(dec)
 
     return encoders_, decoders_
 
@@ -418,6 +401,11 @@ class Net(hk.Module):
     graph_fts = jnp.zeros((batch_size, self.hidden_dim))
     adj_mat = jnp.repeat(
         jnp.expand_dims(jnp.eye(nb_nodes), 0), batch_size, axis=0)
+    
+    # Overwrite encoders and decoders if using shared latent space.
+    if latents_config.use_shared_latent_space:
+      encs = latents_config.shared_encoder
+      decs = latents_config.shared_decoder
 
     # ENCODE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Encode node/edge/graph features from inputs and (optionally) hints.
