@@ -325,62 +325,115 @@ class Net(hk.Module):
 
     return output_preds, hint_preds, latents
 
+  # def _construct_encoders_decoders(self):
+  #   """Constructs encoders and decoders, separate for each algorithm."""
+
+  #   encoders_ = []
+  #   decoders_ = []
+  #   enc_algo_idx = None
+  #   all_enc_keys = set()
+  #   all_dec_keys = set()
+  #   shared_encoder = {}
+  #   shared_decoder = {}
+
+
+  #   for (algo_idx, spec) in enumerate(self.spec):
+  #     enc = {}
+  #     dec = {}
+  #     for name, (stage, loc, t) in spec.items():
+  #       if stage == _Stage.INPUT or (
+  #           stage == _Stage.HINT and self.encode_hints):
+  #         # Build input encoders.
+  #         if name == specs.ALGO_IDX_INPUT_NAME:
+  #           if enc_algo_idx is None:
+  #             enc_algo_idx = [hk.Linear(self.hidden_dim,
+  #                                       name=f'{name}_enc_linear')]
+  #           enc[name] = enc_algo_idx
+  #         else:
+  #           enc[name] = encoders.construct_encoders(
+  #               stage, loc, t, hidden_dim=self.hidden_dim,
+  #               init=self.encoder_init,
+  #               name=f'algo_{algo_idx}_{name}')
+            
+  #         all_enc_keys.add(name)
+
+  #       if stage == _Stage.OUTPUT or (
+  #           stage == _Stage.HINT and self.decode_hints):
+  #         # Build output decoders.
+  #         dec[name] = decoders.construct_decoders(
+  #             loc, t, hidden_dim=self.hidden_dim,
+  #             nb_dims=self.nb_dims[algo_idx][name],
+  #             name=f'algo_{algo_idx}_{name}')
+          
+  #         all_dec_keys.add(name)
+
+  #       if latents_config.use_shared_latent_space:
+  #           for key in all_enc_keys:
+  #               if key not in shared_encoder:
+  #                   shared_encoder[key] = enc.get(key)
+  #           for key in all_dec_keys:
+  #               if key not in shared_decoder:
+  #                   shared_decoder[key] = dec.get(key)
+
+  #     latents_config.shared_encoder = shared_encoder
+  #     latents_config.shared_decoder = shared_decoder
+
+  #     encoders_.append(enc)
+  #     decoders_.append(dec)
+
+  #   return encoders_, decoders_
+
   def _construct_encoders_decoders(self):
     """Constructs encoders and decoders, separate for each algorithm."""
-
     encoders_ = []
     decoders_ = []
     enc_algo_idx = None
-    all_enc_keys = set()
-    all_dec_keys = set()
-    shared_encoder = {}
-    shared_decoder = {}
-
 
     for (algo_idx, spec) in enumerate(self.spec):
-      enc = {}
-      dec = {}
-      for name, (stage, loc, t) in spec.items():
-        if stage == _Stage.INPUT or (
-            stage == _Stage.HINT and self.encode_hints):
-          # Build input encoders.
-          if name == specs.ALGO_IDX_INPUT_NAME:
-            if enc_algo_idx is None:
-              enc_algo_idx = [hk.Linear(self.hidden_dim,
-                                        name=f'{name}_enc_linear')]
-            enc[name] = enc_algo_idx
-          else:
-            enc[name] = encoders.construct_encoders(
-                stage, loc, t, hidden_dim=self.hidden_dim,
-                init=self.encoder_init,
-                name=f'algo_{algo_idx}_{name}')
-            
-          all_enc_keys.add(name)
+        enc = {}
+        dec = {}
 
-        if stage == _Stage.OUTPUT or (
-            stage == _Stage.HINT and self.decode_hints):
-          # Build output decoders.
-          dec[name] = decoders.construct_decoders(
-              loc, t, hidden_dim=self.hidden_dim,
-              nb_dims=self.nb_dims[algo_idx][name],
-              name=f'algo_{algo_idx}_{name}')
-          
-          all_dec_keys.add(name)
+        for name, (stage, loc, t) in spec.items():
+            if stage == _Stage.INPUT or (stage == _Stage.HINT and self.encode_hints):
+                # Build input encoders.
+                if name == specs.ALGO_IDX_INPUT_NAME:
+                    if enc_algo_idx is None:
+                        enc_algo_idx = [hk.Linear(self.hidden_dim, name=f'{name}_enc_linear')]
+                    enc[name] = enc_algo_idx
+                else:
+                    if latents_config.use_shared_latent_space:
+                        if name not in latents_config.shared_encoder:
+                            latents_config.shared_encoder[name] = encoders.construct_encoders(
+                                stage, loc, t, hidden_dim=self.hidden_dim,
+                                init=self.encoder_init, name=f'shared_{name}'
+                            )
+                    else:
+                        enc[name] = encoders.construct_encoders(
+                            stage, loc, t, hidden_dim=self.hidden_dim,
+                            init=self.encoder_init, name=f'algo_{algo_idx}_{name}'
+                        )
 
-      if latents_config.use_shared_latent_space:
-            for key in all_enc_keys:
-                if key not in shared_encoder:
-                    shared_encoder[key] = enc.get(key)
-            for key in all_dec_keys:
-                if key not in shared_decoder:
-                    shared_decoder[key] = dec.get(key)
-            latents_config.shared_encoder = shared_encoder
-            latents_config.shared_decoder = shared_decoder
+            if stage == _Stage.OUTPUT or (stage == _Stage.HINT and self.decode_hints):
+                # Build output decoders.
+                if latents_config.use_shared_latent_space:
+                    if name not in latents_config.shared_decoder:
+                        latents_config.shared_decoder[name] = decoders.construct_decoders(
+                            loc, t, hidden_dim=self.hidden_dim,
+                            nb_dims=self.nb_dims[algo_idx][name],
+                            name=f'shared_{name}'
+                        )
+                else:
+                    dec[name] = decoders.construct_decoders(
+                        loc, t, hidden_dim=self.hidden_dim,
+                        nb_dims=self.nb_dims[algo_idx][name],
+                        name=f'algo_{algo_idx}_{name}'
+                    )
 
-      encoders_.append(enc)
-      decoders_.append(dec)
+        encoders_.append(enc)
+        decoders_.append(dec)
 
     return encoders_, decoders_
+
 
   def _one_step_pred(
       self,

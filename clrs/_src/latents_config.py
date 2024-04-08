@@ -8,8 +8,8 @@ class LatentsConfig:
         self.save_latents = None
         self.filepath = None
         self.use_shared_latent_space = False
-        self.shared_encoder = None
-        self.shared_decoder = None
+        self.shared_encoder = {}
+        self.shared_decoder = {}
 
     def set_latents_filepath(
             self, 
