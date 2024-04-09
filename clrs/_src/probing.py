@@ -350,9 +350,9 @@ def predecessor_to_cyclic_predecessor_and_first(
   pointers_one_hot -= mask[..., None] * mask
   return pointers_one_hot, mask
 
-def reversed_pointer(pointer_probe: np.ndarray) -> np.ndarray:
-    """Constructs the reversed pointer probe."""
-    reversed_probe = np.zeros_like(pointer_probe)
-    for i in range(pointer_probe.shape[0]):
-        reversed_probe[pointer_probe[i]] = i
-    return reversed_probe
+# def reversed_pointer(pointer_probe: np.ndarray) -> np.ndarray:
+#     """Constructs the reversed pointer probe."""
+#     reversed_probe = np.zeros_like(pointer_probe)
+#     for i in range(pointer_probe.shape[0]):
+#         reversed_probe[pointer_probe[i]] = i
+#     return reversed_probe
