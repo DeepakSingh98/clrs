@@ -421,8 +421,8 @@ class HierarchicalGraphProcessor(Processor):
 
     def aggregate_level(level_node_fts, level_adj_mat):
       """Aggregate information at a single level."""
-      level_edge_fts = jnp.max(level_node_fts[:, None, :, :] +
-                               level_node_fts[:, :, None, :], axis=-1)
+      level_edge_fts = level_node_fts[:, None, :, :] + level_node_fts[:, :, None, :]
+      level_edge_fts = jnp.max(level_edge_fts, axis=-1, keepdims=True)
       level_edge_fts = level_edge_fts * level_adj_mat[..., None]
       if self.reducer == 'max':
         aggregated_fts = jnp.max(level_edge_fts, axis=-2)
@@ -858,7 +858,7 @@ def get_processor_factory(kind: str,
           nb_heads=nb_heads,
           use_ln=use_ln
       )
-    elif kind == 'HGP':
+    elif kind == 'hgp':
       processor = HierarchicalGraphProcessor(
           out_size=out_size,
           num_levels=1,
