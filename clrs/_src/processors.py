@@ -419,10 +419,15 @@ class HierarchicalGraphProcessor(Processor):
 
     node_fts = jnp.concatenate([node_fts, hidden], axis=-1)
 
-    def aggregate_level(level_node_fts, level_adj_mat):
+    def aggregate_level(level_node_fts, level_edge_fts, level_adj_mat):
       """Aggregate information at a single level."""
-      level_edge_fts = level_node_fts[:, None, :, :] + level_node_fts[:, :, None, :]
-      level_edge_fts = jnp.max(level_edge_fts, axis=-1, keepdims=True)
+      # level_edge_fts = level_node_fts[:, None, :, :] + level_node_fts[:, :, None, :]
+      # level_edge_fts = jnp.max(level_edge_fts, axis=-1, keepdims=True)
+      # level_edge_fts = level_edge_fts * level_adj_mat[..., None]
+      # Combine node features with corresponding edge features
+      level_edge_fts = jnp.max(level_node_fts[:, None, :, :] +
+                               level_node_fts[:, :, None, :] +
+                               level_edge_fts, axis=-1, keepdims=True)
       level_edge_fts = level_edge_fts * level_adj_mat[..., None]
       if self.reducer == 'max':
         aggregated_fts = jnp.max(level_edge_fts, axis=-2)
@@ -434,17 +439,19 @@ class HierarchicalGraphProcessor(Processor):
         raise ValueError(f"Unsupported reducer: {self.reducer}")
       return aggregated_fts
 
-    def update_node_fts(level, node_fts, adj_mat):
+    def update_node_fts(level, node_fts, edge_fts, adj_mat):
       """Update node features at a single level."""
       level_node_fts = hk.Linear(self.out_size)(node_fts)
       if self.activation_fn is not None:
         level_node_fts = self.activation_fn(level_node_fts)
-      aggregated_fts = aggregate_level(level_node_fts, adj_mat)
+      # aggregated_fts = aggregate_level(level_node_fts, adj_mat)
+      aggregated_fts = aggregate_level(level_node_fts, edge_fts, adj_mat)
       return aggregated_fts
 
     # Perform hierarchical message passing
     for level in range(self.num_levels):
-      node_fts = update_node_fts(level, node_fts, adj_mat)
+      # node_fts = update_node_fts(level, node_fts, adj_mat)
+      node_fts = update_node_fts(level, node_fts, edge_fts, adj_mat)
 
     # Perform final update to get output node features
     output_node_fts = hk.Linear(self.out_size)(node_fts)
