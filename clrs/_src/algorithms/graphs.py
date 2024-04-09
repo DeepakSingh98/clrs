@@ -82,7 +82,7 @@ def dfs(A: _Array) -> _Out:
           specs.Stage.HINT,
           next_probe={
               'pi_h': np.copy(pi),
-              'pred_rev_h': np.argsort(np.copy(pi)),
+              'pi_h_rev': probing.reversed_pointer(pi),
               'color': probing.array_cat(color, 3),
               'd': np.copy(d),
               'f': np.copy(f),
@@ -103,7 +103,7 @@ def dfs(A: _Array) -> _Out:
               specs.Stage.HINT,
               next_probe={
                   'pi_h': np.copy(pi),
-                  'pred_rev_h': np.argsort(np.copy(pi)),
+                  'pi_h_rev': probing.reversed_pointer(pi),
                   'color': probing.array_cat(color, 3),
                   'd': np.copy(d),
                   'f': np.copy(f),
@@ -128,7 +128,7 @@ def dfs(A: _Array) -> _Out:
                   specs.Stage.HINT,
                   next_probe={
                       'pi_h': np.copy(pi),
-                      'pred_rev_h': np.argsort(np.copy(pi)),
+                      'pi_h_rev': probing.reversed_pointer(pi),
                       'color': probing.array_cat(color, 3),
                       'd': np.copy(d),
                       'f': np.copy(f),
@@ -151,7 +151,7 @@ def dfs(A: _Array) -> _Out:
               specs.Stage.HINT,
               next_probe={
                   'pi_h': np.copy(pi),
-                  'pred_rev_h': np.argsort(np.copy(pi)),
+                  'pi_h_rev': probing.reversed_pointer(pi),
                   'color': probing.array_cat(color, 3),
                   'd': np.copy(d),
                   'f': np.copy(f),

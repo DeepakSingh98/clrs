@@ -277,7 +277,7 @@ SPECS = types.MappingProxyType({
         'adj': (Stage.INPUT, Location.EDGE, Type.MASK),
         'pi': (Stage.OUTPUT, Location.NODE, Type.POINTER),
         'pi_h': (Stage.HINT, Location.NODE, Type.POINTER),
-        'pred_rev_h': (Stage.HINT, Location.NODE, Type.POINTER), 
+        'pi_h_rev': (Stage.HINT, Location.NODE, Type.POINTER),  # Reverse order
         'color': (Stage.HINT, Location.NODE, Type.CATEGORICAL),
         'd': (Stage.HINT, Location.NODE, Type.SCALAR),
         'f': (Stage.HINT, Location.NODE, Type.SCALAR),
