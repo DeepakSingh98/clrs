@@ -71,6 +71,7 @@ def dfs(A: _Array) -> _Out:
   d = np.zeros(A.shape[0])
   f = np.zeros(A.shape[0])
   s_prev = np.arange(A.shape[0])
+  breakpoint()
 
   pi_h_rev = np.copy(pi)
   s_prev_rev = np.copy(s_prev)
