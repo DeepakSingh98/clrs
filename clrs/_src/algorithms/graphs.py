@@ -72,8 +72,8 @@ def dfs(A: _Array) -> _Out:
   f = np.zeros(A.shape[0])
   s_prev = np.arange(A.shape[0])
 
-  pi_h_rev = np.arange(A.shape[0])
-  s_prev_rev = np.arange(A.shape[0])
+  pi_h_rev = np.copy(pi)
+  s_prev_rev = np.copy(s_prev)
   
   time = 0
   for s in range(A.shape[0]):
@@ -125,9 +125,9 @@ def dfs(A: _Array) -> _Out:
           if A[u, v] != 0:
             if color[v] == 0:
               pi[v] = u
-              pi_h_rev[v] = u
+              pi_h_rev[u] = v
               color[v] = 1
-              s_prev_rev[s_last]
+              s_prev_rev[s_last] = v
               s_last = v
 
               probing.push(
