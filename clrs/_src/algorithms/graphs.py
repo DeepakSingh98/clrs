@@ -72,8 +72,8 @@ def dfs(A: _Array) -> _Out:
   f = np.zeros(A.shape[0])
   s_prev = np.arange(A.shape[0])
 
-  pi_h_rev = np.full(A.shape[0], -1, dtype=np.int32)  # Initialize pi_h_rev with -1
-  s_prev_rev = np.full(A.shape[0], -1, dtype=np.int32)  # Initialize s_prev_rev with -1
+  pi_h_rev = np.copy(pi)  # Initialize pi_h_rev with -1
+  s_prev_rev = np.copy(s_prev)  # Initialize s_prev_rev with -1
   
   time = 0
   for s in range(A.shape[0]):
