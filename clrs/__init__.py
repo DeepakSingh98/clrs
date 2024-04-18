@@ -27,7 +27,7 @@ from clrs._src.dataset import get_clrs_folder
 from clrs._src.dataset import get_dataset_gcp_url
 from clrs._src.evaluation import evaluate
 from clrs._src.evaluation import evaluate_hints
-from clrs._src.latents_config import latents_config
+from clrs._src.global_config import latents_config, regularisation_config
 from clrs._src.model import Model
 from clrs._src.probing import DataPoint
 from clrs._src.probing import predecessor_to_cyclic_predecessor_and_first
@@ -65,6 +65,7 @@ __all__ = (
     "get_processor_factory",
     "DataPoint",
     "latents_config",
+    "regularisation_config",
     "predecessor_to_cyclic_predecessor_and_first",
     "process_permutations",
     "process_pred_as_input",

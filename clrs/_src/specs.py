@@ -277,12 +277,12 @@ SPECS = types.MappingProxyType({
         'adj': (Stage.INPUT, Location.EDGE, Type.MASK),
         'pi': (Stage.OUTPUT, Location.NODE, Type.POINTER),
         'pi_h': (Stage.HINT, Location.NODE, Type.POINTER),
-        'pi_h_rev': (Stage.HINT, Location.NODE, Type.POINTER),  # Reverse order
+        # 'pi_h_rev': (Stage.HINT, Location.NODE, Type.POINTER),  # Reverse order
         'color': (Stage.HINT, Location.NODE, Type.CATEGORICAL),
         'd': (Stage.HINT, Location.NODE, Type.SCALAR),
         'f': (Stage.HINT, Location.NODE, Type.SCALAR),
         's_prev': (Stage.HINT, Location.NODE, Type.POINTER),
-        's_prev_rev': (Stage.HINT, Location.NODE, Type.POINTER),  # Reverse order
+        # 's_prev_rev': (Stage.HINT, Location.NODE, Type.POINTER),  # Reverse order
         's': (Stage.HINT, Location.NODE, Type.MASK_ONE),
         'u': (Stage.HINT, Location.NODE, Type.MASK_ONE),
         'v': (Stage.HINT, Location.NODE, Type.MASK_ONE),

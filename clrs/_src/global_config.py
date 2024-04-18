@@ -43,3 +43,11 @@ class LatentsConfig:
     
     
 latents_config = LatentsConfig()
+
+class RegularisationConfig:
+    def __init__(self):
+        self.use_hint_reversal = False
+        self.use_causal_augmentation = False
+        self.use_hint_relic = False
+
+regularisation_config = RegularisationConfig()

@@ -29,7 +29,7 @@ from clrs._src import specs
 import jax
 import numpy as np
 
-from clrs._src.latents_config import latents_config
+from clrs._src.global_config import latents_config
 
 # if latents_config.use_shared_latent_space:
 #   SPECS = specs.SHARED_SORTING_SPECS

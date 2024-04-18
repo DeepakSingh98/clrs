@@ -24,7 +24,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from clrs._src.latents_config import latents_config
+from clrs._src.global_config import latents_config
 
 
 _Array = chex.Array

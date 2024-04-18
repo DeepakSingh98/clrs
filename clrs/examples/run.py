@@ -29,7 +29,7 @@ import numpy as np
 import requests
 import tensorflow as tf
 
-from clrs._src.latents_config import latents_config
+from clrs._src.global_config import latents_config
 
 
 flags.DEFINE_list('algorithms', ['bfs'], 'Which algorithms to run.')
