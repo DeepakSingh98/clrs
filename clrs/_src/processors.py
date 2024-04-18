@@ -409,6 +409,8 @@ class HierarchicalGraphProcessor(Processor):
                graph_fts: _Array,
                adj_mat: _Array,
                hidden: _Array,
+               use_attention=False,  # New option for attention
+               use_skip_connections=False,  # New option for skip connections
                **unused_kwargs):
     """Hierarchical graph processor inference step."""
 
@@ -419,22 +421,26 @@ class HierarchicalGraphProcessor(Processor):
 
     node_fts = jnp.concatenate([node_fts, hidden], axis=-1)
 
-    def compute_attention(query, key, value):
-      """Compute attention scores."""
+    def compute_attention(query, key, value, adj_mat):  # Modified function
+      """Compute attention scores with adjacency masking."""
       attention_scores = jnp.dot(query, key.transpose(0, 2, 1))
+      # Mask attention scores based on adjacency matrix
+      mask = -1e9 * (1.0 - adj_mat)
+      attention_scores = jnp.where(adj_mat, attention_scores, mask) 
       attention_scores = jax.nn.softmax(attention_scores, axis=-1)
       attended_values = jnp.einsum('bhij,bhjd->bhid', attention_scores, value)
       return attended_values
 
     def aggregate_level(level_node_fts, level_edge_fts, level_adj_mat):
-      """Aggregate information at a single level."""
-      # Compute attention scores
-      query = hk.Linear(self.out_size)(level_node_fts)
-      key = hk.Linear(self.out_size)(level_node_fts)
-      level_node_fts = jnp.expand_dims(level_node_fts, axis=2)  # Now (32, 4, 1, 128)
-      level_node_fts = jnp.tile(level_node_fts, reps=(1, 1, 4, 1))  # Now (32, 4, 4, 128)
-      value = jnp.concatenate([level_node_fts, level_edge_fts], axis=-1)
-      attended_values = compute_attention(query, key, value)
+      """Aggregate information at a single level with attention option."""
+      if use_attention:  # Check if attention should be used
+        # Compute attention scores
+        query = hk.Linear(self.out_size)(level_node_fts)
+        key = hk.Linear(self.out_size)(level_node_fts)
+        value = jnp.concatenate([level_node_fts, level_edge_fts], axis=-1)
+        attended_values = compute_attention(query, key, value, level_adj_mat)
+      else:
+        attended_values = level_node_fts  # Use node features directly
 
       # Combine attended values with adjacency matrix
       level_edge_fts = attended_values * level_adj_mat[..., None]
@@ -455,7 +461,8 @@ class HierarchicalGraphProcessor(Processor):
         level_node_fts = self.activation_fn(level_node_fts)
       aggregated_fts = aggregate_level(level_node_fts, edge_fts, adj_mat)
       # Skip connection
-      if prev_node_fts is not None:
+      # Skip connection (optional)
+      if use_skip_connections and prev_node_fts is not None: 
         aggregated_fts += prev_node_fts
       return aggregated_fts
 
