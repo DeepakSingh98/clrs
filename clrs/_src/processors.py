@@ -432,6 +432,7 @@ class HierarchicalGraphProcessor(Processor):
       query = hk.Linear(self.out_size)(level_node_fts)
       key = hk.Linear(self.out_size)(level_node_fts)
       level_node_fts = jnp.expand_dims(level_node_fts, axis=2)  # Now (32, 4, 1, 128)
+      level_node_fts = jnp.tile(level_node_fts, reps=(1, 1, 4, 1))  # Now (32, 4, 4, 128)
       value = jnp.concatenate([level_node_fts, level_edge_fts], axis=-1)
       attended_values = compute_attention(query, key, value)
 
