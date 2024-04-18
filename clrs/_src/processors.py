@@ -387,7 +387,7 @@ def get_triplet_msgs(z, edge_fts, graph_fts, nb_triplet_fts):
   )                                             # = (B, N, N, N, H)
 
 class HierarchicalGraphProcessor(Processor):
-  """Hierarchical Graph Processor with Attention and Skip Connections."""
+  """Hierarchical Graph Processor."""
 
   def __init__(self,
                out_size: int,
@@ -409,8 +409,6 @@ class HierarchicalGraphProcessor(Processor):
                graph_fts: _Array,
                adj_mat: _Array,
                hidden: _Array,
-               use_attention=False,  # New option for attention
-               use_skip_connections=False,  # New option for skip connections
                **unused_kwargs):
     """Hierarchical graph processor inference step."""
 
@@ -421,32 +419,12 @@ class HierarchicalGraphProcessor(Processor):
 
     node_fts = jnp.concatenate([node_fts, hidden], axis=-1)
 
-    def compute_attention(query, key, value, adj_mat):  # Modified function
-      """Compute attention scores with adjacency masking."""
-      attention_scores = jnp.dot(query, key.transpose(0, 2, 1))
-      # Mask attention scores based on adjacency matrix
-      mask = -1e9 * (1.0 - adj_mat)
-      attention_scores = jnp.where(adj_mat, attention_scores, mask) 
-      attention_scores = jax.nn.softmax(attention_scores, axis=-1)
-      attended_values = jnp.einsum('bhij,bhjd->bhid', attention_scores, value)
-      return attended_values
-
     def aggregate_level(level_node_fts, level_edge_fts, level_adj_mat):
-      """Aggregate information at a single level with attention option."""
-      if use_attention:  # Check if attention should be used
-        # Compute attention scores
-        query = hk.Linear(self.out_size)(level_node_fts)
-        key = hk.Linear(self.out_size)(level_node_fts)
-        value = jnp.concatenate([level_node_fts, level_edge_fts], axis=-1)
-        attended_values = compute_attention(query, key, value, level_adj_mat)
-      else:
-        attended_values = level_node_fts  # Use node features directly
-
-      # Combine attended values with adjacency matrix
-      if use_attention:
-        level_edge_fts = attended_values * level_adj_mat[..., None]
-      else:
-        level_edge_fts = attended_values 
+      """Aggregate information at a single level."""
+      level_edge_fts = jnp.max(level_node_fts[:, None, :, :] +
+                               level_node_fts[:, :, None, :] +
+                               level_edge_fts, axis=-1, keepdims=True)
+      level_edge_fts = level_edge_fts * level_adj_mat[..., None]
       if self.reducer == 'max':
         aggregated_fts = jnp.max(level_edge_fts, axis=-2)
       elif self.reducer == 'sum':
@@ -457,23 +435,17 @@ class HierarchicalGraphProcessor(Processor):
         raise ValueError(f"Unsupported reducer: {self.reducer}")
       return aggregated_fts
 
-    def update_node_fts(level, node_fts, edge_fts, adj_mat, prev_node_fts):
+    def update_node_fts(level, node_fts, edge_fts, adj_mat):
       """Update node features at a single level."""
       level_node_fts = hk.Linear(self.out_size)(node_fts)
       if self.activation_fn is not None:
         level_node_fts = self.activation_fn(level_node_fts)
       aggregated_fts = aggregate_level(level_node_fts, edge_fts, adj_mat)
-      # Skip connection
-      # Skip connection (optional)
-      if use_skip_connections and prev_node_fts is not None: 
-        aggregated_fts += prev_node_fts
       return aggregated_fts
 
-    # Perform hierarchical message passing with skip connections
-    prev_node_fts = None
+    # Perform hierarchical message passing
     for level in range(self.num_levels):
-      node_fts = update_node_fts(level, node_fts, edge_fts, adj_mat, prev_node_fts)
-      prev_node_fts = node_fts
+      node_fts = update_node_fts(level, node_fts, edge_fts, adj_mat)
 
     # Perform final update to get output node features
     output_node_fts = hk.Linear(self.out_size)(node_fts)
@@ -484,6 +456,105 @@ class HierarchicalGraphProcessor(Processor):
       output_node_fts = hk.LayerNorm(axis=-1, create_scale=True, create_offset=True)(output_node_fts)
 
     return output_node_fts, None, None  # pytype: disable=bad-return-type  # numpy-scalars
+  
+# class HierarchicalGraphProcessor(Processor):
+#   """Hierarchical Graph Processor with Attention and Skip Connections."""
+
+#   def __init__(self,
+#                out_size: int,
+#                num_levels: int,
+#                reducer: str = 'max',
+#                activation_fn: Optional[_Fn] = jax.nn.relu,
+#                use_ln: bool = False,
+#                name: str = 'hierarchical_graph_processor'):
+#     super().__init__(name=name)
+#     self.out_size = out_size
+#     self.num_levels = num_levels
+#     self.reducer = reducer
+#     self.activation_fn = activation_fn
+#     self.use_ln = use_ln
+
+#   def __call__(self,
+#                node_fts: _Array,
+#                edge_fts: _Array,
+#                graph_fts: _Array,
+#                adj_mat: _Array,
+#                hidden: _Array,
+#                use_attention=False,  # New option for attention
+#                use_skip_connections=False,  # New option for skip connections
+#                **unused_kwargs):
+#     """Hierarchical graph processor inference step."""
+
+#     b, n, _ = node_fts.shape
+#     assert edge_fts.shape[:-1] == (b, n, n)
+#     assert graph_fts.shape[:-1] == (b,)
+#     assert adj_mat.shape == (b, n, n)
+
+#     node_fts = jnp.concatenate([node_fts, hidden], axis=-1)
+
+#     def compute_attention(query, key, value, adj_mat):  # Modified function
+#       """Compute attention scores with adjacency masking."""
+#       attention_scores = jnp.dot(query, key.transpose(0, 2, 1))
+#       # Mask attention scores based on adjacency matrix
+#       mask = -1e9 * (1.0 - adj_mat)
+#       attention_scores = jnp.where(adj_mat, attention_scores, mask) 
+#       attention_scores = jax.nn.softmax(attention_scores, axis=-1)
+#       attended_values = jnp.einsum('bhij,bhjd->bhid', attention_scores, value)
+#       return attended_values
+
+#     def aggregate_level(level_node_fts, level_edge_fts, level_adj_mat):
+#       """Aggregate information at a single level with attention option."""
+#       if use_attention:  # Check if attention should be used
+#         # Compute attention scores
+#         query = hk.Linear(self.out_size)(level_node_fts)
+#         key = hk.Linear(self.out_size)(level_node_fts)
+#         value = jnp.concatenate([level_node_fts, level_edge_fts], axis=-1)
+#         attended_values = compute_attention(query, key, value, level_adj_mat)
+#       else:
+#         attended_values = level_node_fts  # Use node features directly
+
+#       # Combine attended values with adjacency matrix
+#       if use_attention:
+#         level_edge_fts = attended_values * level_adj_mat[..., None]
+#       else:
+#         level_edge_fts = attended_values 
+#       if self.reducer == 'max':
+#         aggregated_fts = jnp.max(level_edge_fts, axis=-2)
+#       elif self.reducer == 'sum':
+#         aggregated_fts = jnp.sum(level_edge_fts, axis=-2)
+#       elif self.reducer == 'mean':
+#         aggregated_fts = jnp.mean(level_edge_fts, axis=-2)
+#       else:
+#         raise ValueError(f"Unsupported reducer: {self.reducer}")
+#       return aggregated_fts
+
+#     def update_node_fts(level, node_fts, edge_fts, adj_mat, prev_node_fts):
+#       """Update node features at a single level."""
+#       level_node_fts = hk.Linear(self.out_size)(node_fts)
+#       if self.activation_fn is not None:
+#         level_node_fts = self.activation_fn(level_node_fts)
+#       aggregated_fts = aggregate_level(level_node_fts, edge_fts, adj_mat)
+#       # Skip connection
+#       # Skip connection (optional)
+#       if use_skip_connections and prev_node_fts is not None: 
+#         aggregated_fts += prev_node_fts
+#       return aggregated_fts
+
+#     # Perform hierarchical message passing with skip connections
+#     prev_node_fts = None
+#     for level in range(self.num_levels):
+#       node_fts = update_node_fts(level, node_fts, edge_fts, adj_mat, prev_node_fts)
+#       prev_node_fts = node_fts
+
+#     # Perform final update to get output node features
+#     output_node_fts = hk.Linear(self.out_size)(node_fts)
+#     if self.activation_fn is not None:
+#       output_node_fts = self.activation_fn(output_node_fts)
+
+#     if self.use_ln:
+#       output_node_fts = hk.LayerNorm(axis=-1, create_scale=True, create_offset=True)(output_node_fts)
+
+#     return output_node_fts, None, None  # pytype: disable=bad-return-type  # numpy-scalars
 
 class PGN(Processor):
   """Pointer Graph Networks (Veličković et al., NeurIPS 2020)."""
