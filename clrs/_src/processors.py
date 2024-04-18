@@ -443,7 +443,10 @@ class HierarchicalGraphProcessor(Processor):
         attended_values = level_node_fts  # Use node features directly
 
       # Combine attended values with adjacency matrix
-      level_edge_fts = attended_values * level_adj_mat[..., None]
+      if use_attention:
+        level_edge_fts = attended_values * level_adj_mat[..., None]
+      else:
+        level_edge_fts = attended_values 
       if self.reducer == 'max':
         aggregated_fts = jnp.max(level_edge_fts, axis=-2)
       elif self.reducer == 'sum':
