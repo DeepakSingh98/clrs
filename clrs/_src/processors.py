@@ -631,6 +631,8 @@ class HierarchicalGraphProcessor(Processor):
     graph_query = hk.Linear(self.out_size)(query)
     graph_key = hk.Linear(self.out_size)(graph_fts)
     graph_attention_scores = jnp.einsum('hnd,hd->hnm', graph_query, graph_key)
+    graph_attention_scores = jnp.expand_dims(graph_attention_scores, axis=-1)  # (1, 4, 1)
+    graph_attention_scores = jnp.tile(graph_attention_scores, [1, 1, 4])  # (1, 4, 4)
 
     # Combine node, edge, and graph attention scores
     attention_scores = node_attention_scores + edge_attention_scores + graph_attention_scores
