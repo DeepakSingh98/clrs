@@ -394,13 +394,20 @@ class HierarchicalGraphProcessor(Processor):
                nb_hgp_levels: int,
                reducer: str = 'max',
                activation_fn: Optional[_Fn] = jax.nn.relu,
+               nb_heads: Optional[int] = None,
+               dropout_rate: Optional[float] = 0.0,
+               use_skip_connection: bool = False,
                use_ln: bool = False,
                name: str = 'hierarchical_graph_processor'):
     super().__init__(name=name)
     self.out_size = out_size
-    self.num_levels = nb_hgp_levels
+    self.nb_hgp_levels = nb_hgp_levels
     self.reducer = reducer
     self.activation_fn = activation_fn
+    self.nb_heads = nb_heads
+    self.dropout_rate = dropout_rate
+    self.use_skip_connection = use_skip_connection
+
     self.use_ln = use_ln
 
   def __call__(self,
@@ -421,6 +428,10 @@ class HierarchicalGraphProcessor(Processor):
 
     def aggregate_level(level_node_fts, level_edge_fts, level_adj_mat):
       """Aggregate information at a single level."""
+      if self.nb_heads is not None:
+        # Implement multi-head attention
+        pass
+
       level_edge_fts = jnp.max(level_node_fts[:, None, :, :] +
                                level_node_fts[:, :, None, :] +
                                level_edge_fts, axis=-1, keepdims=True)
@@ -437,14 +448,18 @@ class HierarchicalGraphProcessor(Processor):
 
     def update_node_fts(level, node_fts, edge_fts, adj_mat):
       """Update node features at a single level."""
-      level_node_fts = hk.Linear(self.out_size)(node_fts)
+      level_node_fts = hk.Linear(self.out_size, name=f"level_{level}_linear")(node_fts)
+      # level_node_fts = hk.Linear(self.out_size)(node_fts)
       if self.activation_fn is not None:
         level_node_fts = self.activation_fn(level_node_fts)
       aggregated_fts = aggregate_level(level_node_fts, edge_fts, adj_mat)
+      if self.use_skip_connection:
+        aggregated_fts += node_fts
+      hk.dropout(hk.next_rng_key(), self.dropout_rate, node_fts)
       return aggregated_fts
 
     # Perform hierarchical message passing
-    for level in range(self.num_levels):
+    for level in range(self.nb_hgp_levels):
       node_fts = update_node_fts(level, node_fts, edge_fts, adj_mat)
 
     # Perform final update to get output node features
