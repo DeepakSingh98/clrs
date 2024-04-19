@@ -391,14 +391,14 @@ class HierarchicalGraphProcessor(Processor):
 
   def __init__(self,
                out_size: int,
-               num_levels: int,
+               num_hgp_levels: int,
                reducer: str = 'max',
                activation_fn: Optional[_Fn] = jax.nn.relu,
                use_ln: bool = False,
                name: str = 'hierarchical_graph_processor'):
     super().__init__(name=name)
     self.out_size = out_size
-    self.num_levels = num_levels
+    self.num_levels = num_hgp_levels
     self.reducer = reducer
     self.activation_fn = activation_fn
     self.use_ln = use_ln
