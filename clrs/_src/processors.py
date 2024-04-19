@@ -428,97 +428,9 @@ class HierarchicalGraphProcessor(Processor):
 
     breakpoint()
 
-    def compute_attention(query, key, value, adj_mat):
-      """Compute attention scores with adjacency masking."""
-      # Compute attention scores based on node features
-      node_attention_scores = jnp.dot(query, key.transpose(0, 2, 1))
-
-      # Compute attention scores based on edge features
-      edge_query = hk.Linear(self.out_size)(query)
-      edge_key = hk.Linear(self.out_size)(edge_fts)
-      edge_attention_scores = jnp.einsum('bhid,bhijd->bhij', edge_query, edge_key)
-
-      # Combine node and edge attention scores
-      attention_scores = node_attention_scores + edge_attention_scores
-
-      # Mask attention scores based on adjacency matrix
-      mask = -1e9 * (1.0 - adj_mat)
-      attention_scores = jnp.where(adj_mat, attention_scores, mask)
-      attention_scores = jax.nn.softmax(attention_scores, axis=-1)
-      attended_values = jnp.einsum('bhij,bhjd->bhid', attention_scores, value)
-      return attended_values
-    
-      # attention_scores = jnp.dot(query, key.transpose(0, 2, 1))
-      # # Mask attention scores based on adjacency matrix
-      # mask = -1e9 * (1.0 - adj_mat)
-      # attention_scores = jnp.where(adj_mat, attention_scores, mask) 
-      # attention_scores = jax.nn.softmax(attention_scores, axis=-1)
-      # attended_values = jnp.einsum('bhij,bhjd->bhid', attention_scores, value)
-      # return attended_values
-
-    def aggregate_level(level_node_fts, level_edge_fts, level_adj_mat):
-      """Aggregate information at a single level."""
-      if self.nb_heads > 0:
-        # Implement multi-head attention
-        head_size = self.out_size // self.nb_heads
-        query = hk.Linear(self.out_size)(level_node_fts)
-        key = hk.Linear(self.out_size)(level_node_fts)
-        value = jnp.concatenate([level_node_fts, level_edge_fts], axis=-1)
-        value = hk.Linear(self.out_size)(value)
-
-        query = jnp.reshape(query, (b, n, self.nb_heads, head_size))
-        key = jnp.reshape(key, (b, n, self.nb_heads, head_size))
-        value = jnp.reshape(value, (b, n, self.nb_heads, head_size))
-
-        query = jnp.transpose(query, (0, 2, 1, 3))  # (b, h, n, d)
-        key = jnp.transpose(key, (0, 2, 1, 3))  # (b, h, n, d)
-        value = jnp.transpose(value, (0, 2, 1, 3))  # (b, h, n, d)
-
-        attended_values = jax.vmap(compute_attention, in_axes=(0, 0, 0, None))(
-            query, key, value, level_adj_mat)  # (b, h, n, d)
-
-        attended_values = jnp.transpose(attended_values, (0, 2, 1, 3))  # (b, n, h, d)
-        attended_values = jnp.reshape(attended_values, (b, n, self.out_size))
-        if self.reducer == 'max':
-          aggregated_fts = jnp.max(attended_values, axis=1)
-        elif self.reducer == 'sum':
-          aggregated_fts = jnp.sum(attended_values, axis=1)
-        elif self.reducer == 'mean':
-          aggregated_fts = jnp.mean(attended_values, axis=1)
-        else:
-          raise ValueError(f"Unsupported reducer: {self.reducer}")
-        
-      else:
-        level_edge_fts = jnp.max(level_node_fts[:, None, :, :] +
-                                level_node_fts[:, :, None, :] +
-                                level_edge_fts, axis=-1, keepdims=True)
-        level_edge_fts = level_edge_fts * level_adj_mat[..., None]
-        if self.reducer == 'max':
-          aggregated_fts = jnp.max(level_edge_fts, axis=-2)
-        elif self.reducer == 'sum':
-          aggregated_fts = jnp.sum(level_edge_fts, axis=-2)
-        elif self.reducer == 'mean':
-          aggregated_fts = jnp.mean(level_edge_fts, axis=-2)
-        else:
-          raise ValueError(f"Unsupported reducer: {self.reducer}")
-      
-      return aggregated_fts
-
-    def update_node_fts(level, node_fts, edge_fts, adj_mat):
-      """Update node features at a single level."""
-      level_node_fts = hk.Linear(self.out_size, name=f"level_{level}_linear")(node_fts)
-      # level_node_fts = hk.Linear(self.out_size)(node_fts)
-      if self.activation_fn is not None:
-        level_node_fts = self.activation_fn(level_node_fts)
-      aggregated_fts = aggregate_level(level_node_fts, edge_fts, adj_mat)
-      if self.use_skip_connection:
-        aggregated_fts += node_fts
-      hk.dropout(hk.next_rng_key(), self.dropout_rate, node_fts)
-      return aggregated_fts
-
     # Perform hierarchical message passing
     for level in range(self.nb_hgp_levels):
-      node_fts = update_node_fts(level, node_fts, edge_fts, adj_mat)
+      node_fts = self.update_node_fts(level, node_fts, edge_fts, adj_mat)
 
     # Perform final update to get output node features
     output_node_fts = hk.Linear(self.out_size)(node_fts)
@@ -529,6 +441,87 @@ class HierarchicalGraphProcessor(Processor):
       output_node_fts = hk.LayerNorm(axis=-1, create_scale=True, create_offset=True)(output_node_fts)
 
     return output_node_fts, None, None  # pytype: disable=bad-return-type  # numpy-scalars
+
+  def compute_attention(self, query, key, value, edge_fts, adj_mat):
+    """Compute attention scores with adjacency masking."""
+    # Compute attention scores based on node features
+    node_attention_scores = jnp.dot(query, key.transpose(0, 2, 1))
+
+    # Compute attention scores based on edge features
+    edge_query = hk.Linear(self.out_size)(query)
+    edge_key = hk.Linear(self.out_size)(edge_fts)
+    edge_attention_scores = jnp.einsum('bhid,bhijd->bhij', edge_query, edge_key)
+
+    # Combine node and edge attention scores
+    attention_scores = node_attention_scores + edge_attention_scores
+
+    # Mask attention scores based on adjacency matrix
+    mask = -1e9 * (1.0 - adj_mat)
+    attention_scores = jnp.where(adj_mat, attention_scores, mask)
+    attention_scores = jax.nn.softmax(attention_scores, axis=-1)
+    attended_values = jnp.einsum('bhij,bhjd->bhid', attention_scores, value)
+    return attended_values
+
+  def aggregate_level(self, level_node_fts, level_edge_fts, level_adj_mat, b, n):
+    """Aggregate information at a single level."""
+    if self.nb_heads > 0:
+      # Implement multi-head attention
+      head_size = self.out_size // self.nb_heads
+      query = hk.Linear(self.out_size)(level_node_fts)
+      key = hk.Linear(self.out_size)(level_node_fts)
+      value = jnp.concatenate([level_node_fts, level_edge_fts], axis=-1)
+      value = hk.Linear(self.out_size)(value)
+
+      query = jnp.reshape(query, (b, n, self.nb_heads, head_size))
+      key = jnp.reshape(key, (b, n, self.nb_heads, head_size))
+      value = jnp.reshape(value, (b, n, self.nb_heads, head_size))
+
+      query = jnp.transpose(query, (0, 2, 1, 3))  # (b, h, n, d)
+      key = jnp.transpose(key, (0, 2, 1, 3))  # (b, h, n, d)
+      value = jnp.transpose(value, (0, 2, 1, 3))  # (b, h, n, d)
+
+      attended_values = jax.vmap(self.compute_attention, in_axes=(0, 0, 0, None))(
+          query, key, value, level_adj_mat)  # (b, h, n, d)
+
+      attended_values = jnp.transpose(attended_values, (0, 2, 1, 3))  # (b, n, h, d)
+      attended_values = jnp.reshape(attended_values, (b, n, self.out_size))
+      if self.reducer == 'max':
+        aggregated_fts = jnp.max(attended_values, axis=1)
+      elif self.reducer == 'sum':
+        aggregated_fts = jnp.sum(attended_values, axis=1)
+      elif self.reducer == 'mean':
+        aggregated_fts = jnp.mean(attended_values, axis=1)
+      else:
+        raise ValueError(f"Unsupported reducer: {self.reducer}")
+        
+    else:
+      level_edge_fts = jnp.max(level_node_fts[:, None, :, :] +
+                              level_node_fts[:, :, None, :] +
+                              level_edge_fts, axis=-1, keepdims=True)
+      level_edge_fts = level_edge_fts * level_adj_mat[..., None]
+      if self.reducer == 'max':
+        aggregated_fts = jnp.max(level_edge_fts, axis=-2)
+      elif self.reducer == 'sum':
+        aggregated_fts = jnp.sum(level_edge_fts, axis=-2)
+      elif self.reducer == 'mean':
+        aggregated_fts = jnp.mean(level_edge_fts, axis=-2)
+      else:
+        raise ValueError(f"Unsupported reducer: {self.reducer}")
+    
+    return aggregated_fts
+
+  def update_node_fts(self, level, node_fts, edge_fts, adj_mat):
+    """Update node features at a single level."""
+    level_node_fts = hk.Linear(self.out_size, name=f"level_{level}_linear")(node_fts)
+    # level_node_fts = hk.Linear(self.out_size)(node_fts)
+    if self.activation_fn is not None:
+      level_node_fts = self.activation_fn(level_node_fts)
+    b, n, _ = node_fts.shape
+    aggregated_fts = self.aggregate_level(level_node_fts, edge_fts, adj_mat, b, n)
+    if self.use_skip_connection:
+      aggregated_fts += node_fts
+    hk.dropout(hk.next_rng_key(), self.dropout_rate, node_fts)
+    return aggregated_fts
   
 # class HierarchicalGraphProcessor(Processor):
 #   """Hierarchical Graph Processor with Attention and Skip Connections."""
