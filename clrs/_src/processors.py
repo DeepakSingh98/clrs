@@ -609,17 +609,17 @@ class HierarchicalGraphProcessor(Processor):
     # Compute attention scores based on node features
     node_query = hk.Linear(self.out_size)(query)
     node_key = hk.Linear(self.out_size)(key)
-    node_attention_scores = jnp.einsum('bhid,bhjd->bhij', node_query, node_key)
+    node_attention_scores = jnp.einsum('bhnd,bhmd->bhnm', node_query, node_key)
 
     # Compute attention scores based on edge features
     edge_query = hk.Linear(self.out_size)(query)
     edge_key = hk.Linear(self.out_size)(edge_fts)
-    edge_attention_scores = jnp.einsum('bhid,bhijd->bhij', edge_query, edge_key)
+    edge_attention_scores = jnp.einsum('bhnd,bhnmd->bhnm', edge_query, edge_key)
 
     # Compute attention scores based on graph-level features
     graph_query = hk.Linear(self.out_size)(query)
     graph_key = hk.Linear(self.out_size)(graph_fts)
-    graph_attention_scores = jnp.einsum('bhid,bhd->bhij', graph_query, graph_key)
+    graph_attention_scores = jnp.einsum('bhnd,bhd->bhnm', graph_query, graph_key)
 
     # Combine node, edge, and graph attention scores
     attention_scores = node_attention_scores + edge_attention_scores + graph_attention_scores
@@ -630,7 +630,7 @@ class HierarchicalGraphProcessor(Processor):
     attention_scores = jax.nn.softmax(attention_scores, axis=-1)
 
     # Compute attended values
-    attended_values = jnp.einsum('bhij,bhjd->bhid', attention_scores, value)
+    attended_values = jnp.einsum('bhnm,bhmd->bhnd', attention_scores, value)
     return attended_values
 
   def aggregate_level(self, level_node_fts, level_edge_fts, level_graph_fts, level_adj_mat, b, n):
