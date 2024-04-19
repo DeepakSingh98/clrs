@@ -641,6 +641,23 @@ class HierarchicalGraphProcessor(Processor):
       head_size = self.out_size // self.nb_heads
       query = hk.Linear(self.out_size)(level_node_fts)
       key = hk.Linear(self.out_size)(level_node_fts)
+      value = hk.Linear(self.out_size)(level_node_fts)
+
+      # Reshape for multi-head attention
+      query = jnp.reshape(query, (b, n, self.nb_heads, head_size))
+      key = jnp.reshape(key, (b, n, self.nb_heads, head_size))
+      value = jnp.reshape(value, (b, n, self.nb_heads, head_size))
+      query = jnp.transpose(query, (0, 2, 1, 3))  # (b, h, n, d)
+      key = jnp.transpose(key, (0, 2, 1, 3))  # (b, h, n, d)
+      value = jnp.transpose(value, (0, 2, 1, 3))  # (b, h, n, d)
+
+      # Compute attention and aggregate
+      attended_values = jax.vmap(self.compute_attention, in_axes=(0, 0, 0, 0, 0, None))(
+          query, key, value, level_edge_fts, level_graph_fts, level_adj_mat)  # (b, h, n, d)
+      attended_values = jnp.transpose(attended_values, (0, 2, 1, 3))  # (b, n, h, d)
+      attended_values = jnp.reshape(attended_values, (b, n, self.out_size))
+      aggregated_fts = self.reduce_attention(attended_values)
+  
 
       # Prepare value by concatenating node and edge features
       # level_node_fts = jnp.expand_dims(level_node_fts, axis=2)
@@ -649,25 +666,25 @@ class HierarchicalGraphProcessor(Processor):
       # value = hk.Linear(self.out_size)(value)
 
       # Prepare value by concatenating node and edge features
-      value = jnp.concatenate([level_node_fts[:, :, None, :], level_edge_fts], axis=-1)
-      value = hk.Linear(self.out_size)(value)
+      # value = jnp.concatenate([level_node_fts[:, :, None, :], level_edge_fts], axis=-1)
+      # value = hk.Linear(self.out_size)(value)
 
-      # Reshape for multi-head attention
-      query = jnp.reshape(query, (b, n, self.nb_heads, head_size))
-      key = jnp.reshape(key, (b, n, self.nb_heads, head_size))
-      # value = jnp.reshape(value, (b, n, self.nb_heads, head_size))
-      value = jnp.reshape(value, (b, n, n, self.nb_heads, head_size))
-      query = jnp.transpose(query, (0, 2, 1, 3))  # (b, h, n, d)
-      key = jnp.transpose(key, (0, 2, 1, 3))  # (b, h, n, d)
-      # value = jnp.transpose(value, (0, 2, 1, 3))  # (b, h, n, d)
-      value = jnp.transpose(value, (0, 3, 1, 2, 4))  # (b, h, n, n, d)
+      # # Reshape for multi-head attention
+      # query = jnp.reshape(query, (b, n, self.nb_heads, head_size))
+      # key = jnp.reshape(key, (b, n, self.nb_heads, head_size))
+      # # value = jnp.reshape(value, (b, n, self.nb_heads, head_size))
+      # value = jnp.reshape(value, (b, n, n, self.nb_heads, head_size))
+      # query = jnp.transpose(query, (0, 2, 1, 3))  # (b, h, n, d)
+      # key = jnp.transpose(key, (0, 2, 1, 3))  # (b, h, n, d)
+      # # value = jnp.transpose(value, (0, 2, 1, 3))  # (b, h, n, d)
+      # value = jnp.transpose(value, (0, 3, 1, 2, 4))  # (b, h, n, n, d)
 
       # Compute attention and aggregate
-      attended_values = jax.vmap(self.compute_attention, in_axes=(0, 0, 0, None))(
-          query, key, value, level_adj_mat)  # (b, h, n, d)
-      attended_values = jnp.transpose(attended_values, (0, 2, 1, 3))  # (b, n, h, d)
-      attended_values = jnp.reshape(attended_values, (b, n, self.out_size))
-      aggregated_fts = self.reduce_attention(attended_values)
+      # attended_values = jax.vmap(self.compute_attention, in_axes=(0, 0, 0, None))(
+      #     query, key, value, level_adj_mat)  # (b, h, n, d)
+      # attended_values = jnp.transpose(attended_values, (0, 2, 1, 3))  # (b, n, h, d)
+      # attended_values = jnp.reshape(attended_values, (b, n, self.out_size))
+      # aggregated_fts = self.reduce_attention(attended_values)
 
     else:
       # Aggregate without attention
