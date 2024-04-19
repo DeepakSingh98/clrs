@@ -636,7 +636,6 @@ class HierarchicalGraphProcessor(Processor):
   def aggregate_level(self, level_node_fts, level_edge_fts, level_graph_fts, level_adj_mat, b, n):
     """Aggregate information at a single level."""
     if self.nb_heads > 0:
-      breakpoint()
       # Implement multi-head attention
       head_size = self.out_size // self.nb_heads
       query = hk.Linear(self.out_size)(level_node_fts)
