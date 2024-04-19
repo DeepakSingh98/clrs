@@ -659,11 +659,19 @@ class HierarchicalGraphProcessor(Processor):
       key = jnp.transpose(key, (0, 2, 1, 3))  # (b, h, n, d)
       value = jnp.transpose(value, (0, 2, 1, 3))  # (b, h, n, d)
 
+      # Reshape edge and graph features for multi-head attention
+      level_edge_fts = jnp.reshape(level_edge_fts, (b, n, n, self.nb_heads, head_size))
+      level_edge_fts = jnp.transpose(level_edge_fts, (0, 3, 1, 2, 4))  # (b, h, n, n, d)
+      level_graph_fts = jnp.repeat(level_graph_fts[:, None, :], self.nb_heads, axis=1)  # (b, h, d)
+
       # DEBUGGING PRINT SHAPES
       print("After reshaping for multi-head attention:")
       print("query shape: ", query.shape)
       print("key shape: ", key.shape)
       print("value shape: ", value.shape)
+      print("level_edge_fts shape: ", level_edge_fts.shape)
+      print("level_graph_fts shape: ", level_graph_fts.shape)
+      print("level_adj_mat shape: ", level_adj_mat.shape)
 
       # Compute attention and aggregate
       attended_values = jax.vmap(self.compute_attention, in_axes=(0, 0, 0, 0, 0, None))(
