@@ -134,6 +134,9 @@ flags.DEFINE_integer('multiplier', None,
 flags.DEFINE_boolean('use_shared_latent_space', False,
                       'Whether to use a shared latent space for algorithms.')
 
+flags.DEFINE_integer('num_hgp_levels', 1,
+                      'Number of levels in the hierarchical graph processor.')
+
 FLAGS = flags.FLAGS
 
 
@@ -440,7 +443,8 @@ def main(unused_argv):
       FLAGS.processor_type,
       use_ln=FLAGS.use_ln,
       nb_triplet_fts=FLAGS.nb_triplet_fts,
-      nb_heads=FLAGS.nb_heads
+      nb_heads=FLAGS.nb_heads,
+      num_hgp_levels=FLAGS.num_hgp_levels,
   )
   model_params = dict(
       processor_factory=processor_factory,

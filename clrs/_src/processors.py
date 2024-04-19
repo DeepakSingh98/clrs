@@ -913,7 +913,8 @@ ProcessorFactory = Callable[[int], Processor]
 def get_processor_factory(kind: str,
                           use_ln: bool,
                           nb_triplet_fts: int,
-                          nb_heads: Optional[int] = None) -> ProcessorFactory:
+                          nb_heads: Optional[int] = None,
+                          num_hgp_levels: Optional[int] = None) -> ProcessorFactory:
   """Returns a processor factory.
 
   Args:
@@ -961,7 +962,7 @@ def get_processor_factory(kind: str,
     elif kind == 'hgp':
       processor = HierarchicalGraphProcessor(
           out_size=out_size,
-          num_levels=1,
+          num_levels=num_hgp_levels,
           use_ln=use_ln
       )
     elif kind == 'memnet_full':
