@@ -982,9 +982,9 @@ ProcessorFactory = Callable[[int], Processor]
 def get_processor_factory(kind: str,
                           use_ln: bool,
                           nb_triplet_fts: int,
-                          nb_heads: Optional[int] = 0,
-                          nb_hgp_levels: Optional[int] = 0,
-                          use_skip_connection: Optional[bool] = False,
+                          nb_heads: int,
+                          nb_hgp_levels: int,
+                          use_skip_connection: bool,
                           dropout_rate: Optional[float] = 0.0) -> ProcessorFactory:
   """Returns a processor factory.
 
