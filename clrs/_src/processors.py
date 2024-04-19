@@ -642,6 +642,15 @@ class HierarchicalGraphProcessor(Processor):
       key = hk.Linear(self.out_size)(level_node_fts)
       value = hk.Linear(self.out_size)(level_node_fts)
 
+      # DEBUGGGING PRINT SHAPES
+      print("Before reshaping for multi-head attention:")
+      print("query shape: ", query.shape)
+      print("key shape: ", key.shape)
+      print("value shape: ", value.shape)
+      print("level_edge_fts shape: ", level_edge_fts.shape)
+      print("level_graph_fts shape: ", level_graph_fts.shape)
+      print("level_adj_mat shape: ", level_adj_mat.shape)
+
       # Reshape for multi-head attention
       query = jnp.reshape(query, (b, n, self.nb_heads, head_size))
       key = jnp.reshape(key, (b, n, self.nb_heads, head_size))
@@ -650,11 +659,22 @@ class HierarchicalGraphProcessor(Processor):
       key = jnp.transpose(key, (0, 2, 1, 3))  # (b, h, n, d)
       value = jnp.transpose(value, (0, 2, 1, 3))  # (b, h, n, d)
 
+      # DEBUGGING PRINT SHAPES
+      print("After reshaping for multi-head attention:")
+      print("query shape: ", query.shape)
+      print("key shape: ", key.shape)
+      print("value shape: ", value.shape)
+
       # Compute attention and aggregate
       attended_values = jax.vmap(self.compute_attention, in_axes=(0, 0, 0, 0, 0, None))(
           query, key, value, level_edge_fts, level_graph_fts, level_adj_mat)  # (b, h, n, d)
       attended_values = jnp.transpose(attended_values, (0, 2, 1, 3))  # (b, n, h, d)
       attended_values = jnp.reshape(attended_values, (b, n, self.out_size))
+
+      # DEBUGGING PRINT SHAPES
+      print("After computing attention and reshaping:")
+      print("attended_values shape: ", attended_values.shape)
+
 
       if self.reducer == 'max':
         aggregated_fts = jnp.max(attended_values, axis=1)
