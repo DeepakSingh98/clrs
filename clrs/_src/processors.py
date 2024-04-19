@@ -635,6 +635,13 @@ class HierarchicalGraphProcessor(Processor):
 
   def aggregate_level(self, level_node_fts, level_edge_fts, level_adj_mat, b, n):
     """Aggregate information at a single level."""
+    # DEBUGGING
+    # Print shapes
+    print(f"level_node_fts: {level_node_fts.shape}")
+    print(f"level_edge_fts: {level_edge_fts.shape}")
+    print(f"level_adj_mat: {level_adj_mat.shape}")
+    print(f"b: {b}")
+    print(f"n: {n}")
     if self.nb_heads > 0:
       # Implement multi-head attention
       head_size = self.out_size // self.nb_heads
