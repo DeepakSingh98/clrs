@@ -634,6 +634,13 @@ class HierarchicalGraphProcessor(Processor):
     graph_attention_scores = jnp.expand_dims(graph_attention_scores, axis=-1)  # (1, 4, 1)
     graph_attention_scores = jnp.tile(graph_attention_scores, [1, 1, 4])  # (1, 4, 4)
 
+    # DEBUGGING PRINT SHAPES
+    print("After computing attention scores:")
+    print("node_attention_scores shape: ", node_attention_scores.shape)
+    print("edge_attention_scores shape: ", edge_attention_scores.shape)
+    print("graph_attention_scores shape: ", graph_attention_scores.shape)
+    
+
     # Combine node, edge, and graph attention scores
     attention_scores = node_attention_scores + edge_attention_scores + graph_attention_scores
 
