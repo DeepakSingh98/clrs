@@ -391,14 +391,14 @@ class HierarchicalGraphProcessor(Processor):
 
   def __init__(self,
                out_size: int,
-               num_hgp_levels: int,
+               nb_hgp_levels: int,
                reducer: str = 'max',
                activation_fn: Optional[_Fn] = jax.nn.relu,
                use_ln: bool = False,
                name: str = 'hierarchical_graph_processor'):
     super().__init__(name=name)
     self.out_size = out_size
-    self.num_levels = num_hgp_levels
+    self.num_levels = nb_hgp_levels
     self.reducer = reducer
     self.activation_fn = activation_fn
     self.use_ln = use_ln
@@ -914,7 +914,7 @@ def get_processor_factory(kind: str,
                           use_ln: bool,
                           nb_triplet_fts: int,
                           nb_heads: Optional[int] = None,
-                          num_hgp_levels: Optional[int] = None) -> ProcessorFactory:
+                          nb_hgp_levels: Optional[int] = None) -> ProcessorFactory:
   """Returns a processor factory.
 
   Args:
@@ -962,7 +962,7 @@ def get_processor_factory(kind: str,
     elif kind == 'hgp':
       processor = HierarchicalGraphProcessor(
           out_size=out_size,
-          num_levels=num_hgp_levels,
+          nb_hgp_levels=nb_hgp_levels,
           use_ln=use_ln
       )
     elif kind == 'memnet_full':
