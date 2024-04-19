@@ -645,12 +645,13 @@ class HierarchicalGraphProcessor(Processor):
     attention_scores = node_attention_scores + edge_attention_scores + graph_attention_scores
 
     # Mask attention scores based on adjacency matrix
+    adj_mat = adj_mat[0]  # (4, 4)
     mask = -1e9 * (1.0 - adj_mat)
     attention_scores = jnp.where(adj_mat, attention_scores, mask)
     attention_scores = jax.nn.softmax(attention_scores, axis=-1)
 
     # Compute attended values
-    attended_values = jnp.einsum('bhnm,bhmd->bhnd', attention_scores, value)
+    attended_values = jnp.einsum('hnm,hmd->hnd', attention_scores, value)
     return attended_values
 
   def aggregate_level(self, level_node_fts, level_edge_fts, level_graph_fts, level_adj_mat, b, n):
