@@ -426,8 +426,6 @@ class HierarchicalGraphProcessor(Processor):
 
     node_fts = jnp.concatenate([node_fts, hidden], axis=-1)
 
-    breakpoint()
-
     # Perform hierarchical message passing
     for level in range(self.nb_hgp_levels):
       node_fts = self.update_node_fts(level, node_fts, edge_fts, adj_mat)
@@ -444,7 +442,6 @@ class HierarchicalGraphProcessor(Processor):
 
   def compute_attention(self, query, key, value, edge_fts, adj_mat):
     """Compute attention scores with adjacency masking."""
-    breakpoint()
     # Compute attention scores based on node features
     node_attention_scores = jnp.dot(query, key.transpose(0, 2, 1))
 
@@ -465,7 +462,6 @@ class HierarchicalGraphProcessor(Processor):
 
   def aggregate_level(self, level_node_fts, level_edge_fts, level_adj_mat, b, n):
     """Aggregate information at a single level."""
-    breakpoint()
     if self.nb_heads > 0:
       # Implement multi-head attention
       head_size = self.out_size // self.nb_heads
@@ -516,7 +512,6 @@ class HierarchicalGraphProcessor(Processor):
 
   def update_node_fts(self, level, node_fts, edge_fts, adj_mat):
     """Update node features at a single level."""
-    breakpoint()
     level_node_fts = hk.Linear(self.out_size, name=f"level_{level}_linear")(node_fts)
     # level_node_fts = hk.Linear(self.out_size)(node_fts)
     if self.activation_fn is not None:
