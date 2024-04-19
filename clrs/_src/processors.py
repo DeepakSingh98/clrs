@@ -1036,6 +1036,7 @@ def get_processor_factory(kind: str,
           nb_hgp_levels=nb_hgp_levels,
           use_skip_connection=use_skip_connection,
           dropout_rate=dropout_rate,
+          nb_heads=nb_heads,
           use_ln=use_ln
       )
     elif kind == 'memnet_full':
