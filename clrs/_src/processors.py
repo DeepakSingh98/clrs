@@ -426,6 +426,8 @@ class HierarchicalGraphProcessor(Processor):
 
     node_fts = jnp.concatenate([node_fts, hidden], axis=-1)
 
+    breakpoint()
+
     def compute_attention(query, key, value, adj_mat):
       """Compute attention scores with adjacency masking."""
       # Compute attention scores based on node features
