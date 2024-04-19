@@ -606,6 +606,17 @@ class HierarchicalGraphProcessor(Processor):
 
   def compute_attention(self, query, key, value, edge_fts, graph_fts, adj_mat):
     """Compute attention scores with graph-level features and adjacency masking."""
+
+    # DEBUGGING PRINT SHAPES
+    print("Inside compute_attention:")
+    print("query shape: ", query.shape)
+    print("key shape: ", key.shape)
+    print("value shape: ", value.shape)
+    print("edge_fts shape: ", edge_fts.shape)
+    print("graph_fts shape: ", graph_fts.shape)
+    print("adj_mat shape: ", adj_mat.shape)
+    
+
     # Compute attention scores based on node features
     node_query = hk.Linear(self.out_size)(query)
     node_key = hk.Linear(self.out_size)(key)
