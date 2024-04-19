@@ -428,13 +428,31 @@ class HierarchicalGraphProcessor(Processor):
 
     def compute_attention(query, key, value, adj_mat):
       """Compute attention scores with adjacency masking."""
-      attention_scores = jnp.dot(query, key.transpose(0, 2, 1))
+      # Compute attention scores based on node features
+      node_attention_scores = jnp.dot(query, key.transpose(0, 2, 1))
+
+      # Compute attention scores based on edge features
+      edge_query = hk.Linear(self.out_size)(query)
+      edge_key = hk.Linear(self.out_size)(edge_fts)
+      edge_attention_scores = jnp.einsum('bhid,bhijd->bhij', edge_query, edge_key)
+
+      # Combine node and edge attention scores
+      attention_scores = node_attention_scores + edge_attention_scores
+
       # Mask attention scores based on adjacency matrix
       mask = -1e9 * (1.0 - adj_mat)
-      attention_scores = jnp.where(adj_mat, attention_scores, mask) 
+      attention_scores = jnp.where(adj_mat, attention_scores, mask)
       attention_scores = jax.nn.softmax(attention_scores, axis=-1)
       attended_values = jnp.einsum('bhij,bhjd->bhid', attention_scores, value)
       return attended_values
+    
+      # attention_scores = jnp.dot(query, key.transpose(0, 2, 1))
+      # # Mask attention scores based on adjacency matrix
+      # mask = -1e9 * (1.0 - adj_mat)
+      # attention_scores = jnp.where(adj_mat, attention_scores, mask) 
+      # attention_scores = jax.nn.softmax(attention_scores, axis=-1)
+      # attended_values = jnp.einsum('bhij,bhjd->bhid', attention_scores, value)
+      # return attended_values
 
     def aggregate_level(level_node_fts, level_edge_fts, level_adj_mat):
       """Aggregate information at a single level."""
