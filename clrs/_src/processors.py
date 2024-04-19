@@ -620,17 +620,17 @@ class HierarchicalGraphProcessor(Processor):
     # Compute attention scores based on node features
     node_query = hk.Linear(self.out_size)(query)
     node_key = hk.Linear(self.out_size)(key)
-    node_attention_scores = jnp.einsum('bhnd,bhmd->bhnm', node_query, node_key)
+    node_attention_scores = jnp.einsum('hnd,hmd->hnm', node_query, node_key)
 
     # Compute attention scores based on edge features
     edge_query = hk.Linear(self.out_size)(query)
     edge_key = hk.Linear(self.out_size)(edge_fts)
-    edge_attention_scores = jnp.einsum('bhnd,bhnmd->bhnm', edge_query, edge_key)
+    edge_attention_scores = jnp.einsum('hnd,hnmd->hnm', edge_query, edge_key)
 
     # Compute attention scores based on graph-level features
     graph_query = hk.Linear(self.out_size)(query)
     graph_key = hk.Linear(self.out_size)(graph_fts)
-    graph_attention_scores = jnp.einsum('bhnd,bhd->bhnm', graph_query, graph_key)
+    graph_attention_scores = jnp.einsum('hnd,hd->hnm', graph_query, graph_key)
 
     # Combine node, edge, and graph attention scores
     attention_scores = node_attention_scores + edge_attention_scores + graph_attention_scores
