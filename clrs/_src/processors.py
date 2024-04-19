@@ -426,24 +426,62 @@ class HierarchicalGraphProcessor(Processor):
 
     node_fts = jnp.concatenate([node_fts, hidden], axis=-1)
 
+    def compute_attention(query, key, value, adj_mat):
+      """Compute attention scores with adjacency masking."""
+      attention_scores = jnp.dot(query, key.transpose(0, 2, 1))
+      # Mask attention scores based on adjacency matrix
+      mask = -1e9 * (1.0 - adj_mat)
+      attention_scores = jnp.where(adj_mat, attention_scores, mask) 
+      attention_scores = jax.nn.softmax(attention_scores, axis=-1)
+      attended_values = jnp.einsum('bhij,bhjd->bhid', attention_scores, value)
+      return attended_values
+
     def aggregate_level(level_node_fts, level_edge_fts, level_adj_mat):
       """Aggregate information at a single level."""
       if self.nb_heads is not None:
         # Implement multi-head attention
-        pass
+        head_size = self.out_size // self.nb_heads
+        query = hk.Linear(self.out_size)(level_node_fts)
+        key = hk.Linear(self.out_size)(level_node_fts)
+        value = jnp.concatenate([level_node_fts, level_edge_fts], axis=-1)
+        value = hk.Linear(self.out_size)(value)
 
-      level_edge_fts = jnp.max(level_node_fts[:, None, :, :] +
-                               level_node_fts[:, :, None, :] +
-                               level_edge_fts, axis=-1, keepdims=True)
-      level_edge_fts = level_edge_fts * level_adj_mat[..., None]
-      if self.reducer == 'max':
-        aggregated_fts = jnp.max(level_edge_fts, axis=-2)
-      elif self.reducer == 'sum':
-        aggregated_fts = jnp.sum(level_edge_fts, axis=-2)
-      elif self.reducer == 'mean':
-        aggregated_fts = jnp.mean(level_edge_fts, axis=-2)
+        query = jnp.reshape(query, (b, n, self.nb_heads, head_size))
+        key = jnp.reshape(key, (b, n, self.nb_heads, head_size))
+        value = jnp.reshape(value, (b, n, self.nb_heads, head_size))
+
+        query = jnp.transpose(query, (0, 2, 1, 3))  # (b, h, n, d)
+        key = jnp.transpose(key, (0, 2, 1, 3))  # (b, h, n, d)
+        value = jnp.transpose(value, (0, 2, 1, 3))  # (b, h, n, d)
+
+        attended_values = jax.vmap(compute_attention, in_axes=(0, 0, 0, None))(
+            query, key, value, level_adj_mat)  # (b, h, n, d)
+
+        attended_values = jnp.transpose(attended_values, (0, 2, 1, 3))  # (b, n, h, d)
+        attended_values = jnp.reshape(attended_values, (b, n, self.out_size))
+        if self.reducer == 'max':
+          aggregated_fts = jnp.max(attended_values, axis=1)
+        elif self.reducer == 'sum':
+          aggregated_fts = jnp.sum(attended_values, axis=1)
+        elif self.reducer == 'mean':
+          aggregated_fts = jnp.mean(attended_values, axis=1)
+        else:
+          raise ValueError(f"Unsupported reducer: {self.reducer}")
+        
       else:
-        raise ValueError(f"Unsupported reducer: {self.reducer}")
+        level_edge_fts = jnp.max(level_node_fts[:, None, :, :] +
+                                level_node_fts[:, :, None, :] +
+                                level_edge_fts, axis=-1, keepdims=True)
+        level_edge_fts = level_edge_fts * level_adj_mat[..., None]
+        if self.reducer == 'max':
+          aggregated_fts = jnp.max(level_edge_fts, axis=-2)
+        elif self.reducer == 'sum':
+          aggregated_fts = jnp.sum(level_edge_fts, axis=-2)
+        elif self.reducer == 'mean':
+          aggregated_fts = jnp.mean(level_edge_fts, axis=-2)
+        else:
+          raise ValueError(f"Unsupported reducer: {self.reducer}")
+      
       return aggregated_fts
 
     def update_node_fts(level, node_fts, edge_fts, adj_mat):
