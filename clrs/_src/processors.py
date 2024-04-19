@@ -593,7 +593,7 @@ class HierarchicalGraphProcessor(Processor):
 
     # Perform hierarchical message passing
     for level in range(self.nb_hgp_levels):
-      node_fts = self.update_node_fts(level, node_fts, edge_fts, adj_mat)
+      node_fts = self.update_node_fts(level, node_fts, edge_fts, graph_fts, adj_mat)
 
     # Perform final update to get output node features
     output_node_fts = hk.Linear(self.out_size)(node_fts)
