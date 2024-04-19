@@ -136,6 +136,8 @@ flags.DEFINE_boolean('use_shared_latent_space', False,
 
 flags.DEFINE_integer('nb_hgp_levels', 1,
                       'Number of levels in the hierarchical graph processor.')
+flags.DEFINE_boolean('use_skip_connections', False,
+                      'Whether to use skip connections in the hierarchical graph processor.')
 
 FLAGS = flags.FLAGS
 
@@ -445,6 +447,7 @@ def main(unused_argv):
       nb_triplet_fts=FLAGS.nb_triplet_fts,
       nb_heads=FLAGS.nb_heads,
       nb_hgp_levels=FLAGS.nb_hgp_levels,
+      use_skip_connections=FLAGS.use_skip_connections,
   )
   model_params = dict(
       processor_factory=processor_factory,
