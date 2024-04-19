@@ -472,6 +472,7 @@ class HierarchicalGraphProcessor(Processor):
       query = hk.Linear(self.out_size)(level_node_fts)
       key = hk.Linear(self.out_size)(level_node_fts)
       level_node_fts = jnp.expand_dims(level_node_fts, axis=2)
+      level_node_fts = jnp.repeat(level_node_fts, level_edge_fts.shape[2], axis=2)
       value = jnp.concatenate([level_node_fts, level_edge_fts], axis=-1)
       value = hk.Linear(self.out_size)(value)
 
