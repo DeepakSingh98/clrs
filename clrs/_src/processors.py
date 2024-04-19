@@ -930,7 +930,8 @@ def get_processor_factory(kind: str,
                           nb_triplet_fts: int,
                           nb_heads: Optional[int] = None,
                           nb_hgp_levels: Optional[int] = None,
-                          use_skip_connection: Optional[bool] = False) -> ProcessorFactory:
+                          use_skip_connection: Optional[bool] = False,
+                          dropout_rate: Optional[float] = 0.0) -> ProcessorFactory:
   """Returns a processor factory.
 
   Args:
@@ -980,6 +981,7 @@ def get_processor_factory(kind: str,
           out_size=out_size,
           nb_hgp_levels=nb_hgp_levels,
           use_skip_connection=use_skip_connection,
+          dropout_rate=dropout_rate,
           use_ln=use_ln
       )
     elif kind == 'memnet_full':
