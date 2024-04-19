@@ -635,32 +635,32 @@ class HierarchicalGraphProcessor(Processor):
 
   def aggregate_level(self, level_node_fts, level_edge_fts, level_adj_mat, b, n):
     """Aggregate information at a single level."""
-    # DEBUGGING
-    # Print shapes
-    print(f"level_node_fts: {level_node_fts.shape}")
-    print(f"level_edge_fts: {level_edge_fts.shape}")
-    print(f"level_adj_mat: {level_adj_mat.shape}")
-    print(f"b: {b}")
-    print(f"n: {n}")
     if self.nb_heads > 0:
+      breakpoint()
       # Implement multi-head attention
       head_size = self.out_size // self.nb_heads
       query = hk.Linear(self.out_size)(level_node_fts)
       key = hk.Linear(self.out_size)(level_node_fts)
 
       # Prepare value by concatenating node and edge features
-      level_node_fts = jnp.expand_dims(level_node_fts, axis=2)
-      level_node_fts = jnp.repeat(level_node_fts, level_edge_fts.shape[2], axis=2)
-      value = jnp.concatenate([level_node_fts, level_edge_fts], axis=-1)
+      # level_node_fts = jnp.expand_dims(level_node_fts, axis=2)
+      # level_node_fts = jnp.repeat(level_node_fts, level_edge_fts.shape[2], axis=2)
+      # value = jnp.concatenate([level_node_fts, level_edge_fts], axis=-1)
+      # value = hk.Linear(self.out_size)(value)
+
+      # Prepare value by concatenating node and edge features
+      value = jnp.concatenate([level_node_fts[:, :, None, :], level_edge_fts], axis=-1)
       value = hk.Linear(self.out_size)(value)
 
       # Reshape for multi-head attention
       query = jnp.reshape(query, (b, n, self.nb_heads, head_size))
       key = jnp.reshape(key, (b, n, self.nb_heads, head_size))
-      value = jnp.reshape(value, (b, n, self.nb_heads, head_size))
+      # value = jnp.reshape(value, (b, n, self.nb_heads, head_size))
+      value = jnp.reshape(value, (b, n, n, self.nb_heads, head_size))
       query = jnp.transpose(query, (0, 2, 1, 3))  # (b, h, n, d)
       key = jnp.transpose(key, (0, 2, 1, 3))  # (b, h, n, d)
-      value = jnp.transpose(value, (0, 2, 1, 3))  # (b, h, n, d)
+      # value = jnp.transpose(value, (0, 2, 1, 3))  # (b, h, n, d)
+      value = jnp.transpose(value, (0, 3, 1, 2, 4))  # (b, h, n, n, d)
 
       # Compute attention and aggregate
       attended_values = jax.vmap(self.compute_attention, in_axes=(0, 0, 0, None))(
