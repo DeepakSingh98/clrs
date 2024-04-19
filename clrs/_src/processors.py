@@ -392,11 +392,11 @@ class HierarchicalGraphProcessor(Processor):
   def __init__(self,
                out_size: int,
                nb_hgp_levels: int,
+               nb_heads: int,
+               use_skip_connection: bool,
                reducer: str = 'max',
                activation_fn: Optional[_Fn] = jax.nn.relu,
-               nb_heads: Optional[int] = 0,
                dropout_rate: Optional[float] = 0.0,
-               use_skip_connection: bool = False,
                use_ln: bool = False,
                name: str = 'hierarchical_graph_processor'):
     super().__init__(name=name)
