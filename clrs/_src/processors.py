@@ -394,7 +394,7 @@ class HierarchicalGraphProcessor(Processor):
                nb_hgp_levels: int,
                reducer: str = 'max',
                activation_fn: Optional[_Fn] = jax.nn.relu,
-               nb_heads: Optional[int] = None,
+               nb_heads: Optional[int] = 0,
                dropout_rate: Optional[float] = 0.0,
                use_skip_connection: bool = False,
                use_ln: bool = False,
@@ -456,7 +456,7 @@ class HierarchicalGraphProcessor(Processor):
 
     def aggregate_level(level_node_fts, level_edge_fts, level_adj_mat):
       """Aggregate information at a single level."""
-      if self.nb_heads is not None:
+      if self.nb_heads > 0:
         # Implement multi-head attention
         head_size = self.out_size // self.nb_heads
         query = hk.Linear(self.out_size)(level_node_fts)
@@ -984,8 +984,8 @@ ProcessorFactory = Callable[[int], Processor]
 def get_processor_factory(kind: str,
                           use_ln: bool,
                           nb_triplet_fts: int,
-                          nb_heads: Optional[int] = None,
-                          nb_hgp_levels: Optional[int] = None,
+                          nb_heads: Optional[int] = 0,
+                          nb_hgp_levels: Optional[int] = 0,
                           use_skip_connection: Optional[bool] = False,
                           dropout_rate: Optional[float] = 0.0) -> ProcessorFactory:
   """Returns a processor factory.
