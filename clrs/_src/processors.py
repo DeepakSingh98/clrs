@@ -671,7 +671,7 @@ class HierarchicalGraphProcessor(Processor):
     print("graph_query shape: ", graph_query.shape)
     print("graph_key shape: ", graph_key.shape)
     print("graph_attention_scores shape: ", graph_attention_scores.shape)
-    
+
 
     # 6. Combine Attention Scores
     attention_scores = node_attention_scores + edge_attention_scores + graph_attention_scores
@@ -736,7 +736,7 @@ class HierarchicalGraphProcessor(Processor):
       #   graph_fts = None 
       # else:
       #   # Reshape graph features for node-graph attention 
-      graph_fts = jnp.reshape(level_graph_fts, (b, self.nb_heads, 1, 1, self.out_size))
+      graph_fts = jnp.reshape(level_graph_fts, (b, self.nb_heads, self.out_size))
 
       # DEBUGGING PRINT SHAPES
       print("After reshaping graph features:")
