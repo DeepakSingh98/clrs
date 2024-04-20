@@ -603,57 +603,56 @@ class HierarchicalGraphProcessor(Processor):
       output_node_fts = hk.LayerNorm(axis=-1, create_scale=True, create_offset=True)(output_node_fts)
 
     return output_node_fts, None, None
-
+  
   def compute_attention(self, query, key, value, edge_fts, graph_fts, adj_mat):
     """Compute attention scores with graph-level features and adjacency masking."""
 
-    # DEBUGGING PRINT SHAPES
-    print("Inside compute_attention:")
-    print("query shape: ", query.shape)
-    print("key shape: ", key.shape)
-    print("value shape: ", value.shape)
-    print("edge_fts shape: ", edge_fts.shape)
-    print("graph_fts shape: ", graph_fts.shape)
-    print("adj_mat shape: ", adj_mat.shape)
-    
+    # 1. Linear Transformations for Node Attention
+    node_query = hk.Linear(self.out_size)(query)  # (b, h, n, d)
+    node_key = hk.Linear(self.out_size)(key)    # (b, h, n, d)
 
-    # Compute attention scores based on node features
-    node_query = hk.Linear(self.out_size)(query)
-    node_key = hk.Linear(self.out_size)(key)
-    node_attention_scores = jnp.einsum('hnd,hmd->hnm', node_query, node_key)
+    # 2. Node-to-Node Attention Scores
+    node_attention_scores = jnp.einsum('bhnd,bhmd->bhnm', node_query, node_key)  # (b, h, n, n)
 
-    # Compute attention scores based on edge features
-    edge_query = hk.Linear(self.out_size)(query)
-    edge_key = hk.Linear(self.out_size)(edge_fts)
-    edge_attention_scores = jnp.einsum('hnd,hnmd->hnm', edge_query, edge_key)
+    # 3. Linear Transformations for Edge Attention
+    edge_query = hk.Linear(self.out_size)(query)  # (b, h, n, d)
+    edge_key = hk.Linear(self.out_size)(edge_fts)  # (b, h, n, n, d)
 
-    # Compute attention scores based on graph-level features
-    graph_query = hk.Linear(self.out_size)(query)
-    graph_key = hk.Linear(self.out_size)(graph_fts)
-    graph_attention_scores = jnp.einsum('hnd,hd->hn', graph_query, graph_key)
-    graph_attention_scores = jnp.expand_dims(graph_attention_scores, axis=-1)  # (1, 4, 1)
-    graph_attention_scores = jnp.tile(graph_attention_scores, [1, 1, 4])  # (1, 4, 4)
+    # 4. Edge Attention Scores
+    edge_attention_scores = jnp.einsum('bhnd,bhnmd->bhnm', edge_query, edge_key)  # (b, h, n, n)
 
-    # DEBUGGING PRINT SHAPES
-    print("After computing attention scores:")
-    print("node_attention_scores shape: ", node_attention_scores.shape)
-    print("edge_attention_scores shape: ", edge_attention_scores.shape)
-    print("graph_attention_scores shape: ", graph_attention_scores.shape)
+    # 5. Choose Approach for Graph Attention (Global Context or Node-Graph)
+    if self.use_global_context:
+      # 5a. Global Context Vector Attention
+      graph_query = hk.Linear(self.out_size)(query)  # (b, h, n, d)
+      context_vector = hk.get_parameter("context_vector", 
+                                        shape=(1, self.nb_heads, 1, self.head_size), 
+                                        init=hk.initializers.RandomNormal())  # (1, h, 1, d)
+      graph_attention_scores = jnp.einsum('bhnd,hmd->bhn', graph_query, context_vector)  # (b, h, n)
+      graph_attention_scores = jnp.expand_dims(graph_attention_scores, axis=-1)  # (b, h, n, 1)
 
+    else:
+      # 5b. Node-Graph Attention
+      graph_query = hk.Linear(self.out_size)(query)  # (b, h, n, d)
+      graph_key = hk.Linear(self.out_size)(graph_fts)  # (b, h, d)
+      graph_key = jnp.expand_dims(jnp.expand_dims(graph_key, axis=2), axis=2)  # (b, h, 1, 1, d)
+      graph_attention_scores = jnp.einsum('bhnd,bhmd->bhnm', graph_query, graph_key)  # (b, h, n, 1)
 
-    # Combine node, edge, and graph attention scores
+    # 6. Combine Attention Scores
     attention_scores = node_attention_scores + edge_attention_scores + graph_attention_scores
 
-    # Mask attention scores based on adjacency matrix
-    adj_mat = adj_mat[0]  # (4, 4)
-    mask = -1e9 * (1.0 - adj_mat)
-    attention_scores = jnp.where(adj_mat, attention_scores, mask)
-    attention_scores = jax.nn.softmax(attention_scores, axis=-1)
+    # 7. Masking based on Adjacency Matrix
+    mask = -1e9 * (1.0 - adj_mat[0])  # Assuming adj_mat has shape (b, n, n)
+    attention_scores = jnp.where(adj_mat[0], attention_scores, mask)
 
-    # Compute attended values
-    attended_values = jnp.einsum('hnm,hmd->hnd', attention_scores, value)
+    # 8. Softmax for Attention Coefficients
+    attention_coefs = jax.nn.softmax(attention_scores, axis=-1)  # (b, h, n, n)
+
+    # 9. Compute Attended Values
+    attended_values = jnp.einsum('bhnm,bhmd->bhnd', attention_coefs, value)
+
     return attended_values
-
+  
   def aggregate_level(self, level_node_fts, level_edge_fts, level_graph_fts, level_adj_mat, b, n):
     """Aggregate information at a single level."""
     if self.nb_heads > 0:
@@ -663,14 +662,15 @@ class HierarchicalGraphProcessor(Processor):
       key = hk.Linear(self.out_size)(level_node_fts)
       value = hk.Linear(self.out_size)(level_node_fts)
 
-      # DEBUGGGING PRINT SHAPES
-      print("Before reshaping for multi-head attention:")
-      print("query shape: ", query.shape)
-      print("key shape: ", key.shape)
-      print("value shape: ", value.shape)
+      # DEBUGGING PRINT SHAPES
+      print("Inside aggregate_level:")
+      print("level_node_fts shape: ", level_node_fts.shape)
       print("level_edge_fts shape: ", level_edge_fts.shape)
       print("level_graph_fts shape: ", level_graph_fts.shape)
       print("level_adj_mat shape: ", level_adj_mat.shape)
+      print("query shape: ", query.shape)
+      print("key shape: ", key.shape)
+      print("value shape: ", value.shape)
 
       # Reshape for multi-head attention
       query = jnp.reshape(query, (b, n, self.nb_heads, head_size))
@@ -680,31 +680,38 @@ class HierarchicalGraphProcessor(Processor):
       key = jnp.transpose(key, (0, 2, 1, 3))  # (b, h, n, d)
       value = jnp.transpose(value, (0, 2, 1, 3))  # (b, h, n, d)
 
-      # Reshape edge and graph features for multi-head attention
-      level_edge_fts = jnp.reshape(level_edge_fts, (b, n, n, self.nb_heads, head_size))
-      level_edge_fts = jnp.transpose(level_edge_fts, (0, 3, 1, 2, 4))  # (b, h, n, n, d)
-      level_graph_fts = jnp.repeat(level_graph_fts[:, None, :], self.nb_heads, axis=1)  # (b, h, d)
-
       # DEBUGGING PRINT SHAPES
       print("After reshaping for multi-head attention:")
       print("query shape: ", query.shape)
       print("key shape: ", key.shape)
       print("value shape: ", value.shape)
+
+      # Reshape edge features for multi-head attention
+      level_edge_fts = jnp.reshape(level_edge_fts, (b, n, n, self.nb_heads, head_size))
+      level_edge_fts = jnp.transpose(level_edge_fts, (0, 3, 1, 2, 4))  # (b, h, n, n, d)
+
+      # DEBUGGING PRINT SHAPES
+      print("After reshaping edge features for multi-head attention:")
       print("level_edge_fts shape: ", level_edge_fts.shape)
-      print("level_graph_fts shape: ", level_graph_fts.shape)
-      print("level_adj_mat shape: ", level_adj_mat.shape)
+
+
+      # Adjust graph features based on chosen approach
+      if self.use_global_context:
+        # No need to pass graph features for global context
+        graph_fts = None 
+      else:
+        # Reshape graph features for node-graph attention 
+        graph_fts = jnp.reshape(level_graph_fts, (b, self.nb_heads, 1, 1, self.out_size))
+
+      # DEBUGGING PRINT SHAPES
+      print("After reshaping graph features:")
+      print("graph_fts shape: ", graph_fts.shape)
+
 
       # Compute attention and aggregate
       attended_values = jax.vmap(self.compute_attention, in_axes=(0, 0, 0, 0, 0, None))(
-          query, key, value, level_edge_fts, level_graph_fts, level_adj_mat)  # (b, h, n, d)
-      attended_values = jnp.transpose(attended_values, (0, 2, 1, 3))  # (b, n, h, d)
-      attended_values = jnp.reshape(attended_values, (b, n, self.out_size))
-
-      # DEBUGGING PRINT SHAPES
-      print("After computing attention and reshaping:")
-      print("attended_values shape: ", attended_values.shape)
-
-
+          query, key, value, level_edge_fts, graph_fts, level_adj_mat)  # (b, h, n, d)
+      
       if self.reducer == 'max':
         aggregated_fts = jnp.max(attended_values, axis=1)
       elif self.reducer == 'sum':
@@ -731,8 +738,144 @@ class HierarchicalGraphProcessor(Processor):
 
     return aggregated_fts
 
+  # def compute_attention(self, query, key, value, edge_fts, graph_fts, adj_mat):
+  #   """Compute attention scores with graph-level features and adjacency masking."""
+
+  #   # DEBUGGING PRINT SHAPES
+  #   print("Inside compute_attention:")
+  #   print("query shape: ", query.shape)
+  #   print("key shape: ", key.shape)
+  #   print("value shape: ", value.shape)
+  #   print("edge_fts shape: ", edge_fts.shape)
+  #   print("graph_fts shape: ", graph_fts.shape)
+  #   print("adj_mat shape: ", adj_mat.shape)
+    
+
+  #   # Compute attention scores based on node features
+  #   node_query = hk.Linear(self.out_size)(query)
+  #   node_key = hk.Linear(self.out_size)(key)
+  #   node_attention_scores = jnp.einsum('hnd,hmd->hnm', node_query, node_key)
+
+  #   # Compute attention scores based on edge features
+  #   edge_query = hk.Linear(self.out_size)(query)
+  #   edge_key = hk.Linear(self.out_size)(edge_fts)
+  #   edge_attention_scores = jnp.einsum('hnd,hnmd->hnm', edge_query, edge_key)
+
+  #   # Compute attention scores based on graph-level features
+  #   graph_query = hk.Linear(self.out_size)(query)
+  #   graph_key = hk.Linear(self.out_size)(graph_fts)
+  #   graph_attention_scores = jnp.einsum('hnd,hd->hn', graph_query, graph_key)
+  #   graph_attention_scores = jnp.expand_dims(graph_attention_scores, axis=-1)  # (1, 4, 1)
+  #   graph_attention_scores = jnp.tile(graph_attention_scores, [1, 1, 4])  # (1, 4, 4)
+
+  #   # DEBUGGING PRINT SHAPES
+  #   print("After computing attention scores:")
+  #   print("node_attention_scores shape: ", node_attention_scores.shape)
+  #   print("edge_attention_scores shape: ", edge_attention_scores.shape)
+  #   print("graph_attention_scores shape: ", graph_attention_scores.shape)
+
+
+  #   # Combine node, edge, and graph attention scores
+  #   attention_scores = node_attention_scores + edge_attention_scores + graph_attention_scores
+
+  #   # Mask attention scores based on adjacency matrix
+  #   adj_mat = adj_mat[0]  # (4, 4)
+  #   mask = -1e9 * (1.0 - adj_mat)
+  #   attention_scores = jnp.where(adj_mat, attention_scores, mask)
+  #   attention_scores = jax.nn.softmax(attention_scores, axis=-1)
+
+  #   # Compute attended values
+  #   attended_values = jnp.einsum('hnm,hmd->hnd', attention_scores, value)
+  #   return attended_values
+
+  # def aggregate_level(self, level_node_fts, level_edge_fts, level_graph_fts, level_adj_mat, b, n):
+  #   """Aggregate information at a single level."""
+  #   if self.nb_heads > 0:
+  #     # Implement multi-head attention
+  #     head_size = self.out_size // self.nb_heads
+  #     query = hk.Linear(self.out_size)(level_node_fts)
+  #     key = hk.Linear(self.out_size)(level_node_fts)
+  #     value = hk.Linear(self.out_size)(level_node_fts)
+
+  #     # DEBUGGGING PRINT SHAPES
+  #     print("Before reshaping for multi-head attention:")
+  #     print("query shape: ", query.shape)
+  #     print("key shape: ", key.shape)
+  #     print("value shape: ", value.shape)
+  #     print("level_edge_fts shape: ", level_edge_fts.shape)
+  #     print("level_graph_fts shape: ", level_graph_fts.shape)
+  #     print("level_adj_mat shape: ", level_adj_mat.shape)
+
+  #     # Reshape for multi-head attention
+  #     query = jnp.reshape(query, (b, n, self.nb_heads, head_size))
+  #     key = jnp.reshape(key, (b, n, self.nb_heads, head_size))
+  #     value = jnp.reshape(value, (b, n, self.nb_heads, head_size))
+  #     query = jnp.transpose(query, (0, 2, 1, 3))  # (b, h, n, d)
+  #     key = jnp.transpose(key, (0, 2, 1, 3))  # (b, h, n, d)
+  #     value = jnp.transpose(value, (0, 2, 1, 3))  # (b, h, n, d)
+
+  #     # Reshape edge and graph features for multi-head attention
+  #     level_edge_fts = jnp.reshape(level_edge_fts, (b, n, n, self.nb_heads, head_size))
+  #     level_edge_fts = jnp.transpose(level_edge_fts, (0, 3, 1, 2, 4))  # (b, h, n, n, d)
+  #     level_graph_fts = jnp.repeat(level_graph_fts[:, None, :], self.nb_heads, axis=1)  # (b, h, d)
+
+  #     # DEBUGGING PRINT SHAPES
+  #     print("After reshaping for multi-head attention:")
+  #     print("query shape: ", query.shape)
+  #     print("key shape: ", key.shape)
+  #     print("value shape: ", value.shape)
+  #     print("level_edge_fts shape: ", level_edge_fts.shape)
+  #     print("level_graph_fts shape: ", level_graph_fts.shape)
+  #     print("level_adj_mat shape: ", level_adj_mat.shape)
+
+  #     # Compute attention and aggregate
+  #     attended_values = jax.vmap(self.compute_attention, in_axes=(0, 0, 0, 0, 0, None))(
+  #         query, key, value, level_edge_fts, level_graph_fts, level_adj_mat)  # (b, h, n, d)
+  #     attended_values = jnp.transpose(attended_values, (0, 2, 1, 3))  # (b, n, h, d)
+  #     attended_values = jnp.reshape(attended_values, (b, n, self.out_size))
+
+  #     # DEBUGGING PRINT SHAPES
+  #     print("After computing attention and reshaping:")
+  #     print("attended_values shape: ", attended_values.shape)
+
+
+  #     if self.reducer == 'max':
+  #       aggregated_fts = jnp.max(attended_values, axis=1)
+  #     elif self.reducer == 'sum':
+  #       aggregated_fts = jnp.sum(attended_values, axis=1)
+  #     elif self.reducer == 'mean':
+  #       aggregated_fts = jnp.mean(attended_values, axis=1)
+  #     else:
+  #       raise ValueError(f"Unsupported reducer: {self.reducer}")
+ 
+  #   else:
+  #     # Aggregate without attention
+  #     level_edge_fts = jnp.max(level_node_fts[:, None, :, :] +
+  #                              level_node_fts[:, :, None, :] +
+  #                              level_edge_fts, axis=-1, keepdims=True)
+  #     level_edge_fts = level_edge_fts * level_adj_mat[..., None]
+  #     if self.reducer == 'max':
+  #       aggregated_fts = jnp.max(level_edge_fts, axis=-2)
+  #     elif self.reducer == 'sum':
+  #       aggregated_fts = jnp.sum(level_edge_fts, axis=-2)
+  #     elif self.reducer == 'mean':
+  #       aggregated_fts = jnp.mean(level_edge_fts, axis=-2)
+  #     else:
+  #       raise ValueError(f"Unsupported reducer: {self.reducer}")
+
+  #   return aggregated_fts
+
   def update_node_fts(self, level, node_fts, edge_fts, graph_fts, adj_mat):
     """Update node features at a single level."""
+
+    # DEBUGGING PRINT SHAPES
+    print("Inside update_node_fts:")
+    print("level: ", level)
+    print("node_fts shape: ", node_fts.shape)
+    print("edge_fts shape: ", edge_fts.shape)
+    print("graph_fts shape: ", graph_fts.shape)
+    print("adj_mat shape: ", adj_mat.shape)
+
     level_node_fts = hk.Linear(self.out_size, name=f"level_{level}_linear")(node_fts)
     if self.activation_fn is not None:
       level_node_fts = self.activation_fn(level_node_fts)
@@ -746,6 +889,12 @@ class HierarchicalGraphProcessor(Processor):
     level_graph_fts = hk.Linear(self.out_size, name=f"level_{level}_graph_linear")(graph_fts)
     if self.activation_fn is not None:
       level_graph_fts = self.activation_fn(level_graph_fts)
+
+    # DEBUGGING PRINT SHAPES
+    print("After computing level-specific features:")
+    print("level_node_fts shape: ", level_node_fts.shape)
+    print("level_edge_fts shape: ", level_edge_fts.shape)
+    print("level_graph_fts shape: ", level_graph_fts.shape)
 
     b, n, _ = node_fts.shape
     aggregated_fts = self.aggregate_level(level_node_fts, level_edge_fts, level_graph_fts, adj_mat, b, n)
