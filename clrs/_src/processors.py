@@ -625,34 +625,53 @@ class HierarchicalGraphProcessor(Processor):
     print("After Linear Transformations for Node Attention:")
     print("node_query shape: ", node_query.shape)
     print("node_key shape: ", node_key.shape)
-    
 
     # 2. Node-to-Node Attention Scores
-    node_attention_scores = jnp.einsum('bhnd,bhmd->bhnm', node_query, node_key)  # (b, h, n, n)
+    node_attention_scores = jnp.einsum('hnd,hmd->hnm', node_query, node_key)  # (b, h, n, n)
+
+    # DEBUGGING PRINT SHAPES
+    print("After Node-to-Node Attention Scores:")
+    print("node_attention_scores shape: ", node_attention_scores.shape)
 
     # 3. Linear Transformations for Edge Attention
     edge_query = hk.Linear(self.out_size)(query)  # (b, h, n, d)
     edge_key = hk.Linear(self.out_size)(edge_fts)  # (b, h, n, n, d)
 
+    # DEBUGGING PRINT SHAPES
+    print("After Linear Transformations for Edge Attention:")
+    print("edge_query shape: ", edge_query.shape)
+    print("edge_key shape: ", edge_key.shape)
+
     # 4. Edge Attention Scores
-    edge_attention_scores = jnp.einsum('bhnd,bhnmd->bhnm', edge_query, edge_key)  # (b, h, n, n)
+    edge_attention_scores = jnp.einsum('hnd,hnmd->hnm', edge_query, edge_key)  # (b, h, n, n)
 
-    # 5. Choose Approach for Graph Attention (Global Context or Node-Graph)
-    if self.use_global_context:
-      # 5a. Global Context Vector Attention
-      graph_query = hk.Linear(self.out_size)(query)  # (b, h, n, d)
-      context_vector = hk.get_parameter("context_vector", 
-                                        shape=(1, self.nb_heads, 1, self.head_size), 
-                                        init=hk.initializers.RandomNormal())  # (1, h, 1, d)
-      graph_attention_scores = jnp.einsum('bhnd,hmd->bhn', graph_query, context_vector)  # (b, h, n)
-      graph_attention_scores = jnp.expand_dims(graph_attention_scores, axis=-1)  # (b, h, n, 1)
+    # DEBUGGING PRINT SHAPES
+    print("After Edge Attention Scores:")
+    print("edge_attention_scores shape: ", edge_attention_scores.shape)
 
-    else:
-      # 5b. Node-Graph Attention
-      graph_query = hk.Linear(self.out_size)(query)  # (b, h, n, d)
-      graph_key = hk.Linear(self.out_size)(graph_fts)  # (b, h, d)
-      graph_key = jnp.expand_dims(jnp.expand_dims(graph_key, axis=2), axis=2)  # (b, h, 1, 1, d)
-      graph_attention_scores = jnp.einsum('bhnd,bhmd->bhnm', graph_query, graph_key)  # (b, h, n, 1)
+    # # 5. Choose Approach for Graph Attention (Global Context or Node-Graph)
+    # if self.use_global_context:
+    #   # 5a. Global Context Vector Attention
+    #   graph_query = hk.Linear(self.out_size)(query)  # (b, h, n, d)
+    #   context_vector = hk.get_parameter("context_vector", 
+    #                                     shape=(1, self.nb_heads, 1, self.head_size), 
+    #                                     init=hk.initializers.RandomNormal())  # (1, h, 1, d)
+    #   graph_attention_scores = jnp.einsum('hnd,hd->hn', graph_query, context_vector)  # (b, h, n)
+    #   graph_attention_scores = jnp.expand_dims(graph_attention_scores, axis=-1)  # (b, h, n, 1)
+
+    # else:
+    # 5b. Node-Graph Attention
+    graph_query = hk.Linear(self.out_size)(query)  # (b, h, n, d)
+    graph_key = hk.Linear(self.out_size)(graph_fts)  # (b, h, d)
+    graph_key = jnp.expand_dims(jnp.expand_dims(graph_key, axis=2), axis=2)  # (b, h, 1, 1, d)
+    graph_attention_scores = jnp.einsum('hnd,hd->hn', graph_query, graph_key)  # (b, h, n, 1)
+
+    # DEBUGGING PRINT SHAPES
+    print("After Linear Transformations for Graph Attention:")
+    print("graph_query shape: ", graph_query.shape)
+    print("graph_key shape: ", graph_key.shape)
+    print("graph_attention_scores shape: ", graph_attention_scores.shape)
+    
 
     # 6. Combine Attention Scores
     attention_scores = node_attention_scores + edge_attention_scores + graph_attention_scores
@@ -722,6 +741,10 @@ class HierarchicalGraphProcessor(Processor):
       # DEBUGGING PRINT SHAPES
       print("After reshaping graph features:")
       print("graph_fts shape: ", graph_fts.shape)
+
+      # Apply compute_attention with jax.vmap over the batch dimension
+      attended_values = jax.vmap(self.compute_attention, in_axes=(0, 0, 0, 0, 0, None))(
+        query, key, value, level_edge_fts, graph_fts, level_adj_mat)
 
       # Compute attention and aggregate
       attended_values = jax.vmap(self.compute_attention, in_axes=(0, 0, 0, 0, 0, None))(
