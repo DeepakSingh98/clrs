@@ -695,18 +695,17 @@ class HierarchicalGraphProcessor(Processor):
       print("level_edge_fts shape: ", level_edge_fts.shape)
 
 
-      # Adjust graph features based on chosen approach
-      if self.use_global_context:
-        # No need to pass graph features for global context
-        graph_fts = None 
-      else:
-        # Reshape graph features for node-graph attention 
-        graph_fts = jnp.reshape(level_graph_fts, (b, self.nb_heads, 1, 1, self.out_size))
+      # # Adjust graph features based on chosen approach
+      # if self.use_global_context:
+      #   # No need to pass graph features for global context
+      #   graph_fts = None 
+      # else:
+      #   # Reshape graph features for node-graph attention 
+      graph_fts = jnp.reshape(level_graph_fts, (b, self.nb_heads, 1, 1, self.out_size))
 
       # DEBUGGING PRINT SHAPES
       print("After reshaping graph features:")
       print("graph_fts shape: ", graph_fts.shape)
-
 
       # Compute attention and aggregate
       attended_values = jax.vmap(self.compute_attention, in_axes=(0, 0, 0, 0, 0, None))(
