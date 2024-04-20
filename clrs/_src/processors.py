@@ -607,9 +607,25 @@ class HierarchicalGraphProcessor(Processor):
   def compute_attention(self, query, key, value, edge_fts, graph_fts, adj_mat):
     """Compute attention scores with graph-level features and adjacency masking."""
 
+    # DEBUGGING PRINT SHAPES
+    print("Inside compute_attention:")
+    print("query shape: ", query.shape)
+    print("key shape: ", key.shape)
+    print("value shape: ", value.shape)
+    print("edge_fts shape: ", edge_fts.shape)
+    print("graph_fts shape: ", graph_fts.shape)
+    print("adj_mat shape: ", adj_mat.shape)
+
+
     # 1. Linear Transformations for Node Attention
     node_query = hk.Linear(self.out_size)(query)  # (b, h, n, d)
     node_key = hk.Linear(self.out_size)(key)    # (b, h, n, d)
+
+    # DEBUGGING PRINT SHAPES
+    print("After Linear Transformations for Node Attention:")
+    print("node_query shape: ", node_query.shape)
+    print("node_key shape: ", node_key.shape)
+    
 
     # 2. Node-to-Node Attention Scores
     node_attention_scores = jnp.einsum('bhnd,bhmd->bhnm', node_query, node_key)  # (b, h, n, n)
