@@ -407,10 +407,24 @@ class Net(hk.Module):
                                 stage, loc, t, hidden_dim=self.hidden_dim,
                                 init=self.encoder_init, name=f'shared_{name}'
                             )
+                # Create separate encoders for reversed pointers
+                if t == _Type.POINTER:
+                    reversed_name = name + '_reversed'
+                    if latents_config.use_shared_latent_space:
+                        if reversed_name not in latents_config.shared_encoder:
+                            latents_config.shared_encoder[reversed_name] = encoders.construct_encoders(
+                                stage, _Location.EDGE, t, hidden_dim=self.hidden_dim,
+                                init=self.encoder_init, name=f'shared_{reversed_name}'
+                            )
                     else:
-                        enc[name] = encoders.construct_encoders(
-                            stage, loc, t, hidden_dim=self.hidden_dim,
-                            init=self.encoder_init, name=f'algo_{algo_idx}_{name}'
+                        enc[reversed_name] = encoders.construct_encoders(
+                            stage, _Location.EDGE, t, hidden_dim=self.hidden_dim,
+                            init=self.encoder_init, name=f'algo_{algo_idx}_{reversed_name}'
+                        )
+                else:
+                    enc[name] = encoders.construct_encoders(
+                        stage, loc, t, hidden_dim=self.hidden_dim,
+                        init=self.encoder_init, name=f'algo_{algo_idx}_{name}'
                         )
 
             if stage == _Stage.OUTPUT or (stage == _Stage.HINT and self.decode_hints):
