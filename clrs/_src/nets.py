@@ -483,7 +483,7 @@ class Net(hk.Module):
     for dp in hints:
         if dp.type_ == _Type.POINTER:
             # Reverse the input
-            reversed_data = jnp.flip(dp.data, axis=2)  # Reverse the order of elements along the last axis
+            reversed_data = jnp.flip(dp.data, axis=1)  # Reverse the order of elements along the last axis
             reversed_data = jnp.transpose(reversed_data, axes=(0, 2, 1))  # Swap the last two dimensions
             reversed_dp = probing.DataPoint(
                 name=dp.name + '_reversed',
