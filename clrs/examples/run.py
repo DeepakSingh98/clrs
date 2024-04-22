@@ -494,86 +494,94 @@ def main(unused_argv):
   # Turn off latent saving during training
   latents_config.save_latents = None
 
-  while step < FLAGS.train_steps:
-    feedback_list = [next(t) for t in train_samplers]
+  if FLAGS.train_steps == 0:
+    # Initialize eval model
+    feedback_list = [next(t) for t in train_samplers] # Test samplers much bigger
+    all_features = [f.features for f in feedback_list]
+    eval_model.init(all_features, FLAGS.seed + 1)
 
-    # Initialize model.
-    if step == 0:
-      all_features = [f.features for f in feedback_list]
-      if FLAGS.chunked_training:
-        # We need to initialize the model with samples of all lengths for
-        # all algorithms. Also, we need to make sure that the order of these
-        # sample sizes is the same as the order of the actual training sizes.
-        all_length_features = [all_features] + [
-            [next(t).features for t in train_samplers]
-            for _ in range(len(train_lengths))]
-        train_model.init(all_length_features[:-1], FLAGS.seed + 1)
-      else:
-        train_model.init(all_features, FLAGS.seed + 1)
+  else: 
 
-    # Training step.
-    for algo_idx in range(len(train_samplers)):
-      feedback = feedback_list[algo_idx]
-      rng_key, new_rng_key = jax.random.split(rng_key)
-      if FLAGS.chunked_training:
-        # In chunked training, we must indicate which training length we are
-        # using, so the model uses the correct state.
-        length_and_algo_idx = (length_idx, algo_idx)
-      else:
-        # In non-chunked training, all training lengths can be treated equally,
-        # since there is no state to maintain between batches.
-        length_and_algo_idx = algo_idx
-      cur_loss = train_model.feedback(rng_key, feedback, length_and_algo_idx)
-      rng_key = new_rng_key
+    while step < FLAGS.train_steps:
+      feedback_list = [next(t) for t in train_samplers]
 
-      if FLAGS.chunked_training:
-        examples_in_chunk = np.sum(feedback.features.is_last).item()
-      else:
-        examples_in_chunk = len(feedback.features.lengths)
-      current_train_items[algo_idx] += examples_in_chunk
-      logging.info('Algo %s step %i current loss %f, current_train_items %i.',
-                  FLAGS.algorithms[algo_idx], step,
-                  cur_loss, current_train_items[algo_idx])
+      # Initialize model.
+      if step == 0:
+        all_features = [f.features for f in feedback_list]
+        if FLAGS.chunked_training:
+          # We need to initialize the model with samples of all lengths for
+          # all algorithms. Also, we need to make sure that the order of these
+          # sample sizes is the same as the order of the actual training sizes.
+          all_length_features = [all_features] + [
+              [next(t).features for t in train_samplers]
+              for _ in range(len(train_lengths))]
+          train_model.init(all_length_features[:-1], FLAGS.seed + 1)
+        else:
+          train_model.init(all_features, FLAGS.seed + 1)
 
-    # Periodically evaluate model
-    if step >= next_eval:
-      eval_model.params = train_model.params
+      # Training step.
       for algo_idx in range(len(train_samplers)):
-        common_extras = {'examples_seen': current_train_items[algo_idx],
-                        'step': step,
-                        'algorithm': FLAGS.algorithms[algo_idx]}
+        feedback = feedback_list[algo_idx]
+        rng_key, new_rng_key = jax.random.split(rng_key)
+        if FLAGS.chunked_training:
+          # In chunked training, we must indicate which training length we are
+          # using, so the model uses the correct state.
+          length_and_algo_idx = (length_idx, algo_idx)
+        else:
+          # In non-chunked training, all training lengths can be treated equally,
+          # since there is no state to maintain between batches.
+          length_and_algo_idx = algo_idx
+        cur_loss = train_model.feedback(rng_key, feedback, length_and_algo_idx)
+        rng_key = new_rng_key
 
-        # Validation info.
-        new_rng_key, rng_key = jax.random.split(rng_key)
-        val_stats = collect_and_eval(
-            val_samplers[algo_idx],
-            functools.partial(eval_model.predict, algorithm_index=algo_idx),
-            val_sample_counts[algo_idx],
-            new_rng_key,
-            extras=common_extras)
-        logging.info('(val) algo %s step %d: %s',
-                    FLAGS.algorithms[algo_idx], step, val_stats)
-        val_scores[algo_idx] = val_stats['score']
+        if FLAGS.chunked_training:
+          examples_in_chunk = np.sum(feedback.features.is_last).item()
+        else:
+          examples_in_chunk = len(feedback.features.lengths)
+        current_train_items[algo_idx] += examples_in_chunk
+        logging.info('Algo %s step %i current loss %f, current_train_items %i.',
+                    FLAGS.algorithms[algo_idx], step,
+                    cur_loss, current_train_items[algo_idx])
 
-      next_eval += FLAGS.eval_every
+      # Periodically evaluate model
+      if step >= next_eval:
+        eval_model.params = train_model.params
+        for algo_idx in range(len(train_samplers)):
+          common_extras = {'examples_seen': current_train_items[algo_idx],
+                          'step': step,
+                          'algorithm': FLAGS.algorithms[algo_idx]}
 
-      # If best total score, update best checkpoint.
-      # Also save a best checkpoint on the first step.
-      msg = (f'best avg val score was '
-            f'{best_score/len(FLAGS.algorithms):.3f}, '
-            f'current avg val score is {np.mean(val_scores):.3f}, '
-            f'val scores are: ')
-      msg += ', '.join(
-          ['%s: %.3f' % (x, y) for (x, y) in zip(FLAGS.algorithms, val_scores)])
-      if (sum(val_scores) > best_score) or step == 0:
-        best_score = sum(val_scores)
-        logging.info('Checkpointing best model, %s', msg)
-        train_model.save_model('best.pkl')
-      else:
-        logging.info('Not saving new best model, %s', msg)
+          # Validation info.
+          new_rng_key, rng_key = jax.random.split(rng_key)
+          val_stats = collect_and_eval(
+              val_samplers[algo_idx],
+              functools.partial(eval_model.predict, algorithm_index=algo_idx),
+              val_sample_counts[algo_idx],
+              new_rng_key,
+              extras=common_extras)
+          logging.info('(val) algo %s step %d: %s',
+                      FLAGS.algorithms[algo_idx], step, val_stats)
+          val_scores[algo_idx] = val_stats['score']
 
-    step += 1
-    length_idx = (length_idx + 1) % len(train_lengths)
+        next_eval += FLAGS.eval_every
+
+        # If best total score, update best checkpoint.
+        # Also save a best checkpoint on the first step.
+        msg = (f'best avg val score was '
+              f'{best_score/len(FLAGS.algorithms):.3f}, '
+              f'current avg val score is {np.mean(val_scores):.3f}, '
+              f'val scores are: ')
+        msg += ', '.join(
+            ['%s: %.3f' % (x, y) for (x, y) in zip(FLAGS.algorithms, val_scores)])
+        if (sum(val_scores) > best_score) or step == 0:
+          best_score = sum(val_scores)
+          logging.info('Checkpointing best model, %s', msg)
+          train_model.save_model('best.pkl')
+        else:
+          logging.info('Not saving new best model, %s', msg)
+
+      step += 1
+      length_idx = (length_idx + 1) % len(train_lengths)
 
   # Set save latents to the user specified value
   latents_config.save_latents = FLAGS.save_latents
