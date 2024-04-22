@@ -484,8 +484,7 @@ class Net(hk.Module):
         if dp.type_ == _Type.POINTER:
             # Reverse the input
             breakpoint()
-            reversed_data = jnp.transpose(dp.data, axes=(1, 0))  # Swap dimensions for reversed pointers
-            reversed_data = reversed_data[:, :, None, None]  # Add an extra dimension for feature_dim
+            reversed_data = jnp.flip(dp.data, axis=1)
             reversed_dp = probing.DataPoint(
                 name=dp.name + '_reversed',
                 location=_Location.EDGE,
