@@ -431,19 +431,16 @@ class Net(hk.Module):
             if stage == _Stage.HINT and t == _Type.POINTER and self.encode_hints:
                 reversed_name = name + '_reversed'
                 reversed_loc = _Location.EDGE
-                reversed_data = lambda x: x[:, :, :, None]  # Add an extra dimension for feature_dim
                 if latents_config.use_shared_latent_space:
                     if reversed_name not in latents_config.shared_encoder:
                         latents_config.shared_encoder[reversed_name] = encoders.construct_encoders(
                             stage, reversed_loc, t, hidden_dim=self.hidden_dim,
                             init=self.encoder_init, name=f'shared_{reversed_name}',
-                            reversed_data=reversed_data
                         )
                 else:
                     enc[reversed_name] = encoders.construct_encoders(
                         stage, reversed_loc, t, hidden_dim=self.hidden_dim,
                         init=self.encoder_init, name=f'algo_{algo_idx}_{reversed_name}',
-                        reversed_data=reversed_data
                     )
 
         encoders_.append(enc)
@@ -482,8 +479,22 @@ class Net(hk.Module):
     # ENCODE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Encode node/edge/graph features from inputs and (optionally) hints.
     trajectories = [inputs]
+    reversed_hints = []
+    for dp in hints:
+        if dp.type_ == _Type.POINTER:
+            reversed_data = dp.data[:, :, :, None]  # Add an extra dimension for feature_dim
+            reversed_dp = probing.DataPoint(
+                name=dp.name + '_reversed',
+                location=_Location.EDGE,
+                type_=_Type.POINTER,
+                data=reversed_data
+            )
+            reversed_hints.append(reversed_dp)
+        else:
+            reversed_hints.append(dp)
     if self.encode_hints:
       trajectories.append(hints)
+      trajectories.append(reversed_hints)
   
     for trajectory in trajectories:
       for dp in trajectory:
