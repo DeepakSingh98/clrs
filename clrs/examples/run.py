@@ -447,7 +447,7 @@ def main(unused_argv):
       nb_triplet_fts=FLAGS.nb_triplet_fts,
       nb_heads=FLAGS.nb_heads,
       nb_hgp_levels=FLAGS.nb_hgp_levels,
-      use_skip_connection=FLAGS.use_skip_connection,
+      # use_skip_connection=FLAGS.use_skip_connection,
   )
   model_params = dict(
       processor_factory=processor_factory,
