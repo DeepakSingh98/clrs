@@ -483,7 +483,7 @@ class Net(hk.Module):
     for dp in hints:
         if dp.type_ == _Type.POINTER:
             # Reverse the input
-            breakpoint()
+            # breakpoint()
             reversed_data = jnp.flip(dp.data, axis=1)
             reversed_dp = probing.DataPoint(
                 name=dp.name + '_reversed',
