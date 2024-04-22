@@ -407,6 +407,11 @@ class Net(hk.Module):
                                 stage, loc, t, hidden_dim=self.hidden_dim,
                                 init=self.encoder_init, name=f'shared_{name}'
                             )
+                    else:
+                        enc[name] = encoders.construct_encoders(
+                            stage, loc, t, hidden_dim=self.hidden_dim,
+                            init=self.encoder_init, name=f'algo_{algo_idx}_{name}'
+                        )
             if stage == _Stage.OUTPUT or (stage == _Stage.HINT and self.decode_hints):
                 # Build output decoders.
                 if latents_config.use_shared_latent_space:
@@ -422,6 +427,7 @@ class Net(hk.Module):
                         nb_dims=self.nb_dims[algo_idx][name],
                         name=f'algo_{algo_idx}_{name}'
                     )
+
             if stage == _Stage.HINT and t == _Type.POINTER and self.encode_hints:
                 reversed_name = name + '_reversed'
                 if latents_config.use_shared_latent_space:
