@@ -482,7 +482,7 @@ class Net(hk.Module):
     reversed_hints = []
     for dp in hints:
         if dp.type_ == _Type.POINTER:
-            reversed_data = dp.data[:, :, :, None]  # Add an extra dimension for feature_dim
+            reversed_data = jnp.transpose(dp.data, (0, 2, 1))
             reversed_dp = probing.DataPoint(
                 name=dp.name + '_reversed',
                 location=_Location.EDGE,
