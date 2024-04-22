@@ -74,8 +74,8 @@ def dfs(A: _Array) -> _Out:
   s_prev = np.arange(A.shape[0])
 
   # if regularisation_config.use_hint_reversal:
-  # pi_h_rev = np.copy(pi)  
-  # s_prev_rev = np.copy(s_prev) 
+  pi_h_rev = np.zeros_like(A)  
+  s_prev_rev = np.zeros_like(A)  
 
   time = 0
   for s in range(A.shape[0]):
@@ -88,12 +88,12 @@ def dfs(A: _Array) -> _Out:
           specs.Stage.HINT,
           next_probe={
               'pi_h': np.copy(pi),
-              # 'pi_h_rev': np.copy(pi),
+              'pi_h_rev': np.copy(pi_h_rev),
               'color': probing.array_cat(color, 3),
               'd': np.copy(d),
               'f': np.copy(f),
-              's_prev': np.copy(s_prev),
-              # 's_prev_rev': np.copy(s_prev),
+              's_prev': np.copy(s_prev_rev),
+              's_prev_rev': np.copy(s_prev),
               's': probing.mask_one(s, A.shape[0]),
               'u': probing.mask_one(u, A.shape[0]),
               'v': probing.mask_one(v, A.shape[0]),
@@ -110,12 +110,12 @@ def dfs(A: _Array) -> _Out:
               specs.Stage.HINT,
               next_probe={
                   'pi_h': np.copy(pi),
-                  # 'pi_h_rev': np.copy(pi),
+                  'pi_h_rev': np.copy(pi_h_rev),
                   'color': probing.array_cat(color, 3),
                   'd': np.copy(d),
                   'f': np.copy(f),
                   's_prev': np.copy(s_prev),
-                  # 's_prev_rev': np.copy(s_prev),
+                  's_prev_rev': np.copy(s_prev_rev),
                   's': probing.mask_one(s, A.shape[0]),
                   'u': probing.mask_one(u, A.shape[0]),
                   'v': probing.mask_one(v, A.shape[0]),
@@ -127,9 +127,9 @@ def dfs(A: _Array) -> _Out:
           if A[u, v] != 0:
             if color[v] == 0:
               pi[v] = u
-              # pi_h_rev[u] = v
+              pi_h_rev[v, u] = 1
               color[v] = 1
-              # s_prev_rev[s_last] = v
+              s_prev_rev[s_last, v] = 1
               s_last = v
 
               probing.push(
@@ -137,12 +137,12 @@ def dfs(A: _Array) -> _Out:
                   specs.Stage.HINT,
                   next_probe={
                       'pi_h': np.copy(pi),
-                      # 'pi_h_rev': np.copy(pi),
+                      'pi_h_rev': np.copy(pi_h_rev),
                       'color': probing.array_cat(color, 3),
                       'd': np.copy(d),
                       'f': np.copy(f),
                       's_prev': np.copy(s_prev),
-                      # 's_prev_rev': np.copy(s_prev),
+                      's_prev_rev': np.copy(s_prev_rev),
                       's': probing.mask_one(s, A.shape[0]),
                       'u': probing.mask_one(u, A.shape[0]),
                       'v': probing.mask_one(v, A.shape[0]),
@@ -161,12 +161,12 @@ def dfs(A: _Array) -> _Out:
               specs.Stage.HINT,
               next_probe={
                   'pi_h': np.copy(pi),
-                  # 'pi_h_rev': np.copy(pi),
+                  'pi_h_rev': np.copy(pi_h_rev),
                   'color': probing.array_cat(color, 3),
                   'd': np.copy(d),
                   'f': np.copy(f),
                   's_prev': np.copy(s_prev),
-                  # 's_prev_rev': np.copy(s_prev),
+                  's_prev_rev': np.copy(s_prev_rev),
                   's': probing.mask_one(s, A.shape[0]),
                   'u': probing.mask_one(u, A.shape[0]),
                   'v': probing.mask_one(v, A.shape[0]),
@@ -179,7 +179,7 @@ def dfs(A: _Array) -> _Out:
             break
           pr = s_prev[s_last]
           s_prev[s_last] = s_last
-          # s_prev_rev[pr] = s_last
+          s_prev_rev[pr, s_last] = 0
           s_last = pr
 
         u = s_last
