@@ -478,9 +478,23 @@ class Net(hk.Module):
     # ENCODE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Encode node/edge/graph features from inputs and (optionally) hints.
     trajectories = [inputs]
+    reversed_hints = []
+    for dp in hints:
+        if dp.type_ == _Type.POINTER:
+            reversed_dp = probing.DataPoint(
+                name=dp.name + '_reversed',
+                location=_Location.EDGE,
+                type_=_Type.POINTER,
+                data=dp.data[:, ::-1]  # Reverse the pointer direction
+            )
+            reversed_hints.append(reversed_dp)
+        else:
+            reversed_hints.append(dp)
+
     if self.encode_hints:
       trajectories.append(hints)
-
+      trajectories.append(reversed_hints)
+  
     for trajectory in trajectories:
       for dp in trajectory:
         try:
