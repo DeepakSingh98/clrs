@@ -481,7 +481,7 @@ class Net(hk.Module):
     trajectories = [inputs]
     reversed_hints = []
     for dp in hints:
-        if dp.type_ == _Type.POINTER:
+        if dp.type_ == _Type.POINTER or dp.type_ == _Type.SOFT_POINTER:
             # Create reversed edge-based pointers from node pointers
             reversed_data = hk.one_hot(jnp.flip(dp.data), nb_nodes)
             # data = hk.one_hot(data, nb_nodes)
@@ -499,9 +499,11 @@ class Net(hk.Module):
         trajectories.append(reversed_hints)  # Include reversed hints
 
     jax.debug.print('hints \n {hints}', hints=hints)
-    jax.debug.print('pi_h \n {pi_h}', pi_h=hints[0])
-    jax.debug.print('pi_h data \n {pi_h}', pi_h=hints[0].data)
-    jax.debug.print('reversed hints \n {pi_h_reversed}', pi_h_reversed=reversed_hints)
+    jax.debug.print('pi_h \n {pi_h}', pi_h=hints[3])
+    jax.debug.print('pi_h data \n {pi_h}', pi_h=hints[3].data)
+    jax.debug.print('reversed hints \n {reversed_hints}', reversed_hints=reversed_hints)
+    jax.debug.print('pi_h reversed \n {pi_h}', pi_h=reversed_hints[3])
+    jax.debug.print('pi_h reversed data \n {pi_h}', pi_h=reversed_hints[3].data)
 
     for trajectory in trajectories:
       for dp in trajectory:
