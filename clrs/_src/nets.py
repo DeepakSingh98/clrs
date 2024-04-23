@@ -498,7 +498,8 @@ class Net(hk.Module):
     if self.encode_hints:
         trajectories.append(hints)
         trajectories.append(reversed_hints)  # Include reversed hints
-  
+
+    breakpoint()
     for trajectory in trajectories:
       for dp in trajectory:
         try:
