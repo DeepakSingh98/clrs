@@ -29,7 +29,7 @@ import numpy as np
 import requests
 import tensorflow as tf
 
-from clrs._src.global_config import latents_config
+from clrs._src.global_config import latents_config, regularisation_config
 
 
 flags.DEFINE_list('algorithms', ['bfs'], 'Which algorithms to run.')
@@ -133,6 +133,9 @@ flags.DEFINE_integer('multiplier', None,
 
 flags.DEFINE_boolean('use_shared_latent_space', False,
                       'Whether to use a shared latent space for algorithms.')
+
+flags.DEFINE_boolean('use_hint_reversal', False,
+                      'Whether to use hint reversal for regularization.')
 
 flags.DEFINE_integer('nb_hgp_levels', 1,
                       'Number of levels in the hierarchical graph processor.')
@@ -417,6 +420,7 @@ def create_samplers(rng, train_lengths: List[int]):
 def main(unused_argv):
 
   latents_config.use_shared_latent_space = FLAGS.use_shared_latent_space
+  regularisation_config.use_hint_reversal = FLAGS.use_hint_reversal
 
   if FLAGS.hint_mode == 'encoded_decoded':
     encode_hints = True
