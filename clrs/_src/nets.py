@@ -483,6 +483,7 @@ class Net(hk.Module):
     for dp in hints:
         if dp.type_ == _Type.POINTER:
             # Create reversed edge-based pointers from node pointers
+            breakpoint()
             data = hk.one_hot(dp.data, nb_nodes)
             reversed_data = jnp.transpose(data, (0, 2, 1))
             reversed_dp = probing.DataPoint(
