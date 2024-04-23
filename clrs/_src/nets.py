@@ -428,20 +428,20 @@ class Net(hk.Module):
                         name=f'algo_{algo_idx}_{name}'
                     )
 
-            if stage == _Stage.HINT and t == _Type.POINTER and self.encode_hints:
-                reversed_name = name + '_reversed'
-                reversed_loc = _Location.EDGE
-                if latents_config.use_shared_latent_space:
-                    if reversed_name not in latents_config.shared_encoder:
-                        latents_config.shared_encoder[reversed_name] = encoders.construct_encoders(
-                            stage, reversed_loc, t, hidden_dim=self.hidden_dim,
-                            init=self.encoder_init, name=f'shared_{reversed_name}',
-                        )
-                else:
-                    enc[reversed_name] = encoders.construct_encoders(
-                        stage, reversed_loc, t, hidden_dim=self.hidden_dim,
-                        init=self.encoder_init, name=f'algo_{algo_idx}_{reversed_name}',
-                    )
+            # if stage == _Stage.HINT and t == _Type.POINTER and self.encode_hints:
+            #     reversed_name = name + '_reversed'
+            #     reversed_loc = _Location.EDGE
+            #     if latents_config.use_shared_latent_space:
+            #         if reversed_name not in latents_config.shared_encoder:
+            #             latents_config.shared_encoder[reversed_name] = encoders.construct_encoders(
+            #                 stage, reversed_loc, t, hidden_dim=self.hidden_dim,
+            #                 init=self.encoder_init, name=f'shared_{reversed_name}',
+            #             )
+            #     else:
+            #         enc[reversed_name] = encoders.construct_encoders(
+            #             stage, reversed_loc, t, hidden_dim=self.hidden_dim,
+            #             init=self.encoder_init, name=f'algo_{algo_idx}_{reversed_name}',
+            #         )
 
         encoders_.append(enc)
         decoders_.append(dec)
@@ -482,9 +482,10 @@ class Net(hk.Module):
     reversed_hints = []
     for dp in hints:
         if dp.type_ == _Type.POINTER:
-            # Reverse the input
-            reversed_data = jnp.flip(dp.data, axis=1)  # Reverse the order of elements along the last axis
-            reversed_data = jnp.transpose(reversed_data, axes=(0, 2, 1))  # Swap the last two dimensions
+            # Create reversed edge-based pointers from node pointers
+            reversed_data = jax.ops.index_update(jnp.zeros((batch_size, nb_nodes, nb_nodes)), 
+                                                dp.data[:, None], 
+                                                jnp.arange(nb_nodes)[None, :])
             reversed_dp = probing.DataPoint(
                 name=dp.name + '_reversed',
                 location=_Location.EDGE,
@@ -495,8 +496,8 @@ class Net(hk.Module):
         else:
             reversed_hints.append(dp)
     if self.encode_hints:
-      trajectories.append(hints)
-      trajectories.append(reversed_hints)
+        trajectories.append(hints)
+        trajectories.append(reversed_hints)  # Include reversed hints
   
     for trajectory in trajectories:
       for dp in trajectory:
