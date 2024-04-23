@@ -483,9 +483,10 @@ class Net(hk.Module):
     for dp in hints:
         if dp.type_ == _Type.POINTER:
             # Create reversed edge-based pointers from node pointers
-            reversed_data = jax.ops.index_update(jnp.zeros((batch_size, nb_nodes, nb_nodes)), 
-                                                dp.data[:, None], 
-                                                jnp.arange(nb_nodes)[None, :])
+            reversed_data = jnp.zeros((batch_size, nb_nodes, nb_nodes))
+            reversed_data = reversed_data.at[jnp.arange(batch_size)[:, None, None], 
+                                            dp.data[:, None], 
+                                            jnp.arange(nb_nodes)[None, :]].set(1)
             reversed_dp = probing.DataPoint(
                 name=dp.name + '_reversed',
                 location=_Location.EDGE,
