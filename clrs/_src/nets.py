@@ -498,6 +498,8 @@ class Net(hk.Module):
         trajectories.append(hints)
         trajectories.append(reversed_hints)  # Include reversed hints
 
+    breakpoint()
+
     jax.debug.print('hints \n {hints}', hints=hints)
     jax.debug.print('pi_h \n {pi_h}', pi_h=hints[3])
     jax.debug.print('pi_h data \n {pi_h}', pi_h=hints[3].data)
