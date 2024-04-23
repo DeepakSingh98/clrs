@@ -493,8 +493,7 @@ class Net(hk.Module):
                 data=reversed_data
             )
             reversed_hints.append(reversed_dp)
-        else:
-            reversed_hints.append(dp)
+
     if self.encode_hints:
         trajectories.append(hints)
         trajectories.append(reversed_hints)  # Include reversed hints
