@@ -32,7 +32,7 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 
-from clrs._src.global_config import latents_config
+from clrs._src.global_config import latents_config, regularisation_config
 
 _Array = chex.Array
 _DataPoint = probing.DataPoint
@@ -427,21 +427,22 @@ class Net(hk.Module):
                         nb_dims=self.nb_dims[algo_idx][name],
                         name=f'algo_{algo_idx}_{name}'
                     )
-
-            if stage == _Stage.HINT and t == _Type.POINTER and self.encode_hints:
-                reversed_name = name + '_reversed'
-                reversed_loc = _Location.EDGE
-                if latents_config.use_shared_latent_space:
-                    if reversed_name not in latents_config.shared_encoder:
-                        latents_config.shared_encoder[reversed_name] = encoders.construct_encoders(
+            
+            if regularisation_config.use_hint_reversal:
+                if stage == _Stage.HINT and t == _Type.POINTER and self.encode_hints:
+                    reversed_name = name + '_reversed'
+                    reversed_loc = _Location.EDGE
+                    if latents_config.use_shared_latent_space:
+                        if reversed_name not in latents_config.shared_encoder:
+                            latents_config.shared_encoder[reversed_name] = encoders.construct_encoders(
+                                stage, reversed_loc, t, hidden_dim=self.hidden_dim,
+                                init=self.encoder_init, name=f'shared_{reversed_name}',
+                            )
+                    else:
+                        enc[reversed_name] = encoders.construct_encoders(
                             stage, reversed_loc, t, hidden_dim=self.hidden_dim,
-                            init=self.encoder_init, name=f'shared_{reversed_name}',
+                            init=self.encoder_init, name=f'algo_{algo_idx}_{reversed_name}',
                         )
-                else:
-                    enc[reversed_name] = encoders.construct_encoders(
-                        stage, reversed_loc, t, hidden_dim=self.hidden_dim,
-                        init=self.encoder_init, name=f'algo_{algo_idx}_{reversed_name}',
-                    )
 
         encoders_.append(enc)
         decoders_.append(dec)
@@ -479,24 +480,27 @@ class Net(hk.Module):
     # ENCODE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Encode node/edge/graph features from inputs and (optionally) hints.
     trajectories = [inputs]
-    reversed_hints = []
-    for dp in hints:
-        if dp.type_ == _Type.SOFT_POINTER:
-            # Create reversed edge-based pointers from node pointers
-            reversed_data = jnp.flip(dp.data, axis=1)
-            # data = hk.one_hot(data, nb_nodes)
-            # reversed_data = jnp.transpose(data, (0, 2, 1))
-            reversed_dp = probing.DataPoint(
-                name=dp.name + '_reversed',
-                location=_Location.EDGE,
-                type_=_Type.POINTER,
-                data=reversed_data
-            )
-            reversed_hints.append(reversed_dp)
+
+    if regularisation_config.use_hint_reversal:
+      reversed_hints = []
+      for dp in hints:
+          if dp.type_ == _Type.SOFT_POINTER:
+              # Create reversed edge-based pointers from node pointers
+              reversed_data = jnp.flip(dp.data, axis=1)
+              # data = hk.one_hot(data, nb_nodes)
+              # reversed_data = jnp.transpose(data, (0, 2, 1))
+              reversed_dp = probing.DataPoint(
+                  name=dp.name + '_reversed',
+                  location=_Location.EDGE,
+                  type_=_Type.POINTER,
+                  data=reversed_data
+              )
+              reversed_hints.append(reversed_dp)
+
+      trajectories.append(reversed_hints)
 
     if self.encode_hints:
         trajectories.append(hints)
-        trajectories.append(reversed_hints)  # Include reversed hints
 
 
     # Debugging

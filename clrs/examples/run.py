@@ -486,6 +486,7 @@ def main(unused_argv):
   current_train_items = [0] * len(FLAGS.algorithms)
   step = 0
   next_eval = 0
+  next_test = 0
   # Make sure scores improve on first step, but not overcome best score
   # until all algos have had at least one evaluation.
   val_scores = [-99999.9] * len(FLAGS.algorithms)
@@ -583,38 +584,42 @@ def main(unused_argv):
       step += 1
       length_idx = (length_idx + 1) % len(train_lengths)
 
-  # Set save latents to the user specified value
-  latents_config.save_latents = FLAGS.save_latents
+    if step >= next_test:
 
-  logging.info('Restoring best model from checkpoint...')
-  eval_model.restore_model('best.pkl', only_load_processor=False)
+      # Set save latents to the user specified value
+      latents_config.save_latents = FLAGS.save_latents
 
-  for algo_idx in range(len(train_samplers)):
-    common_extras = {'examples_seen': current_train_items[algo_idx],
-                     'step': step,
-                     'algorithm': FLAGS.algorithms[algo_idx]}
-    new_rng_key, rng_key = jax.random.split(rng_key)
-    eval_args = dict(
-        sampler=test_samplers[algo_idx],
-        predict_fn=functools.partial(eval_model.predict, algorithm_index=algo_idx),
-        sample_count=test_sample_counts[algo_idx],
-        rng_key=new_rng_key,
-        extras=common_extras,
-    )
-    if FLAGS.save_latents:
-      latents_config.set_latents_filepath(
-        FLAGS.latents_path, 
-        FLAGS.checkpoint_path, 
-        algo_idx,
-        FLAGS.algorithms, 
-        FLAGS.seed, 
-        FLAGS.processor_type,
-        FLAGS.hint_mode,
+      logging.info('Restoring best model from checkpoint...')
+      eval_model.restore_model('best.pkl', only_load_processor=False)
+
+      for algo_idx in range(len(train_samplers)):
+        common_extras = {'examples_seen': current_train_items[algo_idx],
+                        'step': step,
+                        'algorithm': FLAGS.algorithms[algo_idx]}
+        new_rng_key, rng_key = jax.random.split(rng_key)
+        eval_args = dict(
+            sampler=test_samplers[algo_idx],
+            predict_fn=functools.partial(eval_model.predict, algorithm_index=algo_idx),
+            sample_count=test_sample_counts[algo_idx],
+            rng_key=new_rng_key,
+            extras=common_extras,
         )
-      extract_latents(**eval_args)
+        if FLAGS.save_latents:
+          latents_config.set_latents_filepath(
+            FLAGS.latents_path, 
+            FLAGS.checkpoint_path, 
+            algo_idx,
+            FLAGS.algorithms, 
+            FLAGS.seed, 
+            FLAGS.processor_type,
+            FLAGS.hint_mode,
+            )
+          extract_latents(**eval_args)
 
-    test_stats = collect_and_eval(**eval_args)
-    logging.info('(test) algo %s : %s', FLAGS.algorithms[algo_idx], test_stats)
+        test_stats = collect_and_eval(**eval_args)
+        logging.info('(test) algo %s : %s', FLAGS.algorithms[algo_idx], test_stats)
+
+      next_test += FLAGS.test_every
 
   logging.info('Done!')
 
