@@ -515,5 +515,5 @@ def karatsuba(x: _Array, y: _Array, probes: probing.ProbesDict) -> _Out:
       'key': probing.array_cat(np.concatenate([x, y]), 10) 
   })
 
-  _, probes = _karatsuba_recursive(x, y, probes, 0, 0)
-  return probes
+  z, probes = _karatsuba_recursive(x, y, probes, 0, 0)
+  return z, probes
