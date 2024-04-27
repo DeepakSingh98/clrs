@@ -485,6 +485,7 @@ class Net(hk.Module):
       reversed_hints = []
       for dp in hints:
           if dp.type_ == _Type.POINTER:
+              [rint(dp)]
               # Create reversed edge-based pointers from node pointers
               reversed_data = jnp.flip(dp.data, axis=1)
               # data = hk.one_hot(data, nb_nodes)
@@ -497,6 +498,7 @@ class Net(hk.Module):
               )
               reversed_hints.append(reversed_dp)
           elif dp.type_ == _Type.SOFT_POINTER:
+              print(dp)
               breakpoint()
               reversed_data = jnp.flip(dp.data, axis=1)
               reversed_dp = probing.DataPoint(
