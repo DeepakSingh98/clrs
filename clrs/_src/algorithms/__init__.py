@@ -19,6 +19,7 @@
 
 from clrs._src.algorithms.divide_and_conquer import find_maximum_subarray
 from clrs._src.algorithms.divide_and_conquer import find_maximum_subarray_kadane
+from clrs._src.algorithms.divide_and_conquer import karatsuba
 
 from clrs._src.algorithms.dynamic_programming import matrix_chain_order
 from clrs._src.algorithms.dynamic_programming import lcs_length
