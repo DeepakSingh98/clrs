@@ -636,7 +636,7 @@ class ConvexHullSampler(Sampler):
 
     return [xs, ys]
   
-  class KaratsubaSampler(Sampler):
+class KaratsubaSampler(Sampler):
     """Sampler for Karatsuba multiplication."""
 
     def _sample_data(self, length: int, low: int = 0, high: int = 9): 
