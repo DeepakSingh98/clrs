@@ -524,7 +524,7 @@ SPECS = types.MappingProxyType({
         'endpoint': (Stage.HINT, Location.NODE, Type.MASK_ONE),
         'i': (Stage.HINT, Location.NODE, Type.MASK_ONE),
         'phase': (Stage.HINT, Location.GRAPH, Type.CATEGORICAL)
-    }
+    },
     'karatsuba': {
     'pos': (Stage.INPUT, Location.NODE, Type.SCALAR),
     'key': (Stage.INPUT, Location.NODE, Type.CATEGORICAL),
