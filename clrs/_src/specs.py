@@ -82,6 +82,7 @@ CLRS_30_ALGS = [
     'insertion_sort',
     'jarvis_march',
     'kmp_matcher',
+    'karatsuba',
     'lcs_length',
     'matrix_chain_order',
     'minimum',
@@ -524,4 +525,12 @@ SPECS = types.MappingProxyType({
         'i': (Stage.HINT, Location.NODE, Type.MASK_ONE),
         'phase': (Stage.HINT, Location.GRAPH, Type.CATEGORICAL)
     }
+    'karatsuba': {
+    'pos': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'key': (Stage.INPUT, Location.NODE, Type.CATEGORICAL),
+    'pred': (Stage.OUTPUT, Location.NODE, Type.SHOULD_BE_PERMUTATION),
+    'x_h': (Stage.HINT, Location.NODE, Type.SCALAR),
+    'y_h': (Stage.HINT, Location.NODE, Type.SCALAR),
+    'i': (Stage.HINT, Location.NODE, Type.MASK_ONE) 
+    }   
 })

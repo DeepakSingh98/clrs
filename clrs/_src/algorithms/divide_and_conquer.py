@@ -457,3 +457,63 @@ def find_maximum_subarray_kadane(A: _Array) -> _Out:
   probing.finalize(probes)
 
   return (best_low, best_high, best_sum), probes
+
+def karatsuba(x: _Array, y: _Array, probes: probing.ProbesDict) -> _Out:
+  """Karatsuba multiplication."""
+
+  def _karatsuba_recursive(x, y, probes, base_pos_x, base_pos_y):
+    n = max(len(x), len(y)) 
+    if n == 1:
+      z = x * y
+      z_pos = np.array([base_pos_x + base_pos_y])
+      probes = probing.initialize(specs.SPECS['karatsuba'])
+      probing.push(probes, specs.Stage.INPUT, {
+          'pos': z_pos,
+          'key': probing.array_cat(z, 10)
+      })
+      probing.push(probes, specs.Stage.HINT, {
+          'x_h': z,
+          'y_h': z,
+          'i': probing.mask_one(0, 1)
+      })
+      probing.push(probes, specs.Stage.OUTPUT, {'pred': np.array([0])})
+      probing.finalize(probes)
+      return z, probes
+    else:
+      m = n // 2 
+      x_high, x_low = x[:m], x[m:]
+      y_high, y_low = y[:m], y[m:]
+
+      z_0, probes = _karatsuba_recursive(x_low, y_low, probes, base_pos_x, base_pos_y) 
+      z_1, probes = _karatsuba_recursive(x_high, y_high, probes, base_pos_x + m, base_pos_y + m)
+      z_2, probes = _karatsuba_recursive(x_low + x_high, y_low + y_high, probes, base_pos_x, base_pos_y) 
+
+      z = (z_1 * 10**(2*m)) + ((z_2 - z_1 - z_0) * 10**(m)) + z_0
+
+      # Construct output probes
+      z_pos = np.arange(len(z)) + base_pos_x + base_pos_y 
+      probes = probing.initialize(specs.SPECS['karatsuba'])
+      probing.push(probes, specs.Stage.INPUT, {
+          'pos': z_pos,
+          'key': probing.array_cat(z, 10)
+      })
+      # Push hint probes for visualization
+      probing.push(probes, specs.Stage.HINT, {
+          'x_h': z,
+          'y_h': z,
+          'i': probing.mask_one(len(z) - 1, len(z)) 
+      })
+      probing.push(probes, specs.Stage.OUTPUT, {'pred': np.array([0])})  # Placeholder, will be overwritten
+      probing.finalize(probes)
+      return z, probes
+
+  x_pos = np.arange(len(x))
+  y_pos = np.arange(len(y)) + len(x) 
+  probes = probing.initialize(specs.SPECS['karatsuba'])
+  probing.push(probes, specs.Stage.INPUT, {
+      'pos': np.concatenate([x_pos, y_pos]),
+      'key': probing.array_cat(np.concatenate([x, y]), 10) 
+  })
+
+  _, probes = _karatsuba_recursive(x, y, probes, 0, 0)
+  return probes

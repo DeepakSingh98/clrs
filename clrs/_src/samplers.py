@@ -635,6 +635,16 @@ class ConvexHullSampler(Sampler):
     ys = rs * np.sin(thetas) + origin_y
 
     return [xs, ys]
+  
+  class KaratsubaSampler(Sampler):
+    """Sampler for Karatsuba multiplication."""
+
+    def _sample_data(self, length: int, low: int = 0, high: int = 9): 
+      n1 = length // 2
+      n2 = length - n1
+      x = self._random_string(length=n1, chars=high - low + 1) + low 
+      y = self._random_string(length=n2, chars=high - low + 1) + low
+      return [x, y]
 
 
 SAMPLERS = {
@@ -670,6 +680,7 @@ SAMPLERS = {
     'segments_intersect': SegmentsSampler,
     'graham_scan': ConvexHullSampler,
     'jarvis_march': ConvexHullSampler,
+    'karatsuba': KaratsubaSampler,
 }
 
 
