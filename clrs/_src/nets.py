@@ -484,7 +484,7 @@ class Net(hk.Module):
     if regularisation_config.use_hint_reversal:
       reversed_hints = []
       for dp in hints:
-          if dp.type_ == _Type.POINTER or 'reversed' in dp.name:
+          if dp.type_ == _Type.POINTER:
               breakpoint()
               # Create reversed edge-based pointers from node pointers
               reversed_data = jnp.flip(dp.data, axis=1)
