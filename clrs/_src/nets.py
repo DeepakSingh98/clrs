@@ -498,7 +498,7 @@ class Net(hk.Module):
               # )
               # reversed_hints.append(reversed_dp)
           if dp.type_ == _Type.SOFT_POINTER:
-            breakpoint()
+              breakpoint()
               # jax.debug.print("DataPoint {dp}", dp=dp)
               # breakpoint()
               # reversed_data = jnp.flip(dp.data, axis=1)
