@@ -484,7 +484,7 @@ class Net(hk.Module):
     if regularisation_config.use_hint_reversal:
       reversed_hints = []
       for dp in hints:
-          if dp.type_ == _Type.SOFT_POINTER:
+          if dp.type_ == _Type.POINTER or 'reversed' in dp.name:
               # Create reversed edge-based pointers from node pointers
               reversed_data = jnp.flip(dp.data, axis=1)
               # data = hk.one_hot(data, nb_nodes)
