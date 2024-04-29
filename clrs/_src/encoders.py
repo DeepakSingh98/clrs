@@ -107,10 +107,9 @@ def accum_edge_fts(encoders, dp: _DataPoint, edge_fts: _Array) -> _Array:
   elif dp.location == _Location.EDGE:
     encoding = _encode_inputs(encoders, dp)
     if dp.type_ == _Type.POINTER:
-      breakpoint()
       # Aggregate pointer contributions across sender and receiver nodes.
       encoding_2 = encoders[1](jnp.expand_dims(dp.data, -1))
-      edge_fts += jnp.mean(encoding, axis=1) + jnp.mean(encoding_2, axis=2)
+      edge_fts += jnp.mean(encoding, axis=2) + jnp.mean(encoding_2, axis=1)
     else:
       edge_fts += encoding
 
