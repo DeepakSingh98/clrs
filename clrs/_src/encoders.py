@@ -105,6 +105,7 @@ def accum_edge_fts(encoders, dp: _DataPoint, edge_fts: _Array) -> _Array:
     edge_fts += encoding
 
   elif dp.location == _Location.EDGE:
+    breakpoint()
     encoding = _encode_inputs(encoders, dp)
     if dp.type_ == _Type.POINTER:
       # Aggregate pointer contributions across sender and receiver nodes.
