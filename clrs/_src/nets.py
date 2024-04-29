@@ -514,17 +514,18 @@ class Net(hk.Module):
       # trajectories.append(reversed_hints)
 
     if self.encode_hints:
+        trajectories.append(hints)
 
         if regularisation_config.use_hint_reversal:
+          reversed_hints = []
           for dp in hints:
             if dp.type_ == _Type.POINTER or dp.type_ == _Type.SOFT_POINTER:
               reversed_data = 1 - dp.data
               reversed_dp = probing.DataPoint(
                   name=dp.name + '_reversed', location=_Location.EDGE, 
                   type_=dp.type_, data=reversed_data)
-              hints.append(reversed_dp)
-
-        trajectories.append(hints)
+              reversed_hints.append(reversed_dp)
+          trajectories.append(reversed_hints)
     
     # Debugging
     # for dp in hints:
