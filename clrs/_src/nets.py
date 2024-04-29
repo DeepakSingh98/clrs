@@ -514,7 +514,6 @@ class Net(hk.Module):
       # trajectories.append(reversed_hints)
 
     if self.encode_hints:
-        trajectories.append(hints)
 
         if regularisation_config.use_hint_reversal:
           reversed_hints = []
@@ -525,7 +524,9 @@ class Net(hk.Module):
                   name=dp.name + '_reversed', location=_Location.EDGE, 
                   type_=dp.type_, data=reversed_data)
               reversed_hints.append(reversed_dp)
-          trajectories.append(reversed_hints)
+          hints.extend(reversed_hints)
+
+        trajectories.append(hints)
     
     # Debugging
     # for dp in hints:
