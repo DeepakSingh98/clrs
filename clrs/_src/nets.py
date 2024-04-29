@@ -481,9 +481,9 @@ class Net(hk.Module):
     # Encode node/edge/graph features from inputs and (optionally) hints.
     trajectories = [inputs]
 
-    if regularisation_config.use_hint_reversal:
-      reversed_hints = []
-      for dp in hints:
+    # if regularisation_config.use_hint_reversal:
+    #   reversed_hints = []
+    #   for dp in hints:
           # if dp.type_ == _Type.POINTER:
               # jax.debug.print("DataPoint {dp}", dp=dp)
               # # Create reversed edge-based pointers from node pointers
@@ -497,9 +497,9 @@ class Net(hk.Module):
               #     data=reversed_data
               # )
               # reversed_hints.append(reversed_dp)
-          if dp.type_ == _Type.SOFT_POINTER:
-              jax.debug.print("DataPoint {dp}", dp=dp)
-              breakpoint()
+          # if dp.type_ == _Type.SOFT_POINTER:
+          #     jax.debug.print("DataPoint {dp}", dp=dp)
+          #     breakpoint()
               # jax.debug.print("DataPoint {dp}", dp=dp)
               # breakpoint()
               # reversed_data = jnp.flip(dp.data, axis=1)
@@ -511,12 +511,21 @@ class Net(hk.Module):
               # )
               # reversed_hints.append(reversed_dp)
 
-      trajectories.append(reversed_hints)
+      # trajectories.append(reversed_hints)
 
     if self.encode_hints:
         trajectories.append(hints)
 
+        if regularisation_config.use_hint_reversal:
+          for dp in hints:
+            if dp.type == _Type.SOFT_POINTER:
+              reversed_data = 1 - dp.data
+              reversed_dp = probing.DataPoint(
+                  name=dp.name + '_reversed', location=_Location.EDGE, 
+                  type_=dp.type, data=reversed_data)
+              trajectories.append(reversed_dp)
 
+    
     # Debugging
     # for dp in hints:
     #   if dp.name == 'pi_h':
@@ -540,6 +549,11 @@ class Net(hk.Module):
         try:
           dp = encoders.preprocess(dp, nb_nodes)
           assert dp.type_ != _Type.SOFT_POINTER
+
+          # if regularisation_config.use_hint_reversal:
+          #   rev_dp = encoders.reverse_pointer_hint(dp)
+          #   trajectory.append(rev_dp)
+
           adj_mat = encoders.accum_adj_mat(dp, adj_mat)
           encoder = encs[dp.name]
           edge_fts = encoders.accum_edge_fts(encoder, dp, edge_fts)

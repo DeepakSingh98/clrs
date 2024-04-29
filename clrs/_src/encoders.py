@@ -21,6 +21,8 @@ from clrs._src import specs
 import haiku as hk
 import jax.numpy as jnp
 
+from clrs._src.global_config import regularisation_config
+
 _Array = chex.Array
 _DataPoint = probing.DataPoint
 _Location = specs.Location
@@ -76,6 +78,15 @@ def preprocess(dp: _DataPoint, nb_nodes: int) -> _DataPoint:
       new_type = _Type.POINTER
   dp = probing.DataPoint(
       name=dp.name, location=dp.location, type_=new_type, data=data)
+  
+  return dp
+
+def reverse_pointer_hint(dp: _DataPoint) -> _DataPoint:
+  
+  data = 1 - dp.data
+
+  dp = probing.DataPoint(
+      name=dp.name + '_reversed', location=_Location.EDGE, type_=dp.type, data=data)
 
   return dp
 
