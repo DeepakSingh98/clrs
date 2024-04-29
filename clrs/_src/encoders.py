@@ -109,7 +109,11 @@ def accum_edge_fts(encoders, dp: _DataPoint, edge_fts: _Array) -> _Array:
     if dp.type_ == _Type.POINTER:
       # Aggregate pointer contributions across sender and receiver nodes.
       encoding_2 = encoders[1](jnp.expand_dims(dp.data, -1))
-      edge_fts += jnp.mean(encoding, axis=2) + jnp.mean(encoding_2, axis=1)
+
+      if "reversed" in dp.name:
+        edge_fts += jnp.mean(encoding, axis=1, keepdims=True) + jnp.mean(encoding_2, axis=2, keepdims=True)
+      else:
+        edge_fts += jnp.mean(encoding, axis=1) + jnp.mean(encoding_2, axis=2)
     else:
       edge_fts += encoding
 
