@@ -77,8 +77,8 @@ def preprocess(dp: _DataPoint, nb_nodes: int) -> _DataPoint:
     if dp.type_ == _Type.SOFT_POINTER:
       new_type = _Type.POINTER
 
-  if regularisation_config.use_hint_reversal:
-    data = jnp.flip(data, axis=1)
+  # if regularisation_config.use_hint_reversal:
+  #   data = jnp.flip(data, axis=1)
 
   dp = probing.DataPoint(
       name=dp.name, location=dp.location, type_=new_type, data=data)
