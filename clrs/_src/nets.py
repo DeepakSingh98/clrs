@@ -481,52 +481,45 @@ class Net(hk.Module):
     # Encode node/edge/graph features from inputs and (optionally) hints.
     trajectories = [inputs]
 
-    # if regularisation_config.use_hint_reversal:
-    #   reversed_hints = []
-    #   for dp in hints:
-          # if dp.type_ == _Type.POINTER:
-              # jax.debug.print("DataPoint {dp}", dp=dp)
-              # # Create reversed edge-based pointers from node pointers
-              # reversed_data = jnp.flip(dp.data, axis=1)
-              # # data = hk.one_hot(data, nb_nodes)
-              # # reversed_data = jnp.transpose(data, (0, 2, 1))
-              # reversed_dp = probing.DataPoint(
-              #     name=dp.name + '_reversed',
-              #     location=_Location.EDGE,
-              #     type_=_Type.POINTER,
-              #     data=reversed_data
-              # )
-              # reversed_hints.append(reversed_dp)
-          # if dp.type_ == _Type.SOFT_POINTER:
-          #     jax.debug.print("DataPoint {dp}", dp=dp)
-          #     breakpoint()
-              # jax.debug.print("DataPoint {dp}", dp=dp)
-              # breakpoint()
-              # reversed_data = jnp.flip(dp.data, axis=1)
-              # reversed_dp = probing.DataPoint(
-              #     name=dp.name + '_reversed',
-              #     location=_Location.EDGE,
-              #     type_=_Type.SOFT_POINTER,
-              #     data=reversed_data
-              # )
-              # reversed_hints.append(reversed_dp)
-
-      # trajectories.append(reversed_hints)
-
-    if self.encode_hints:
-
-        if regularisation_config.use_hint_reversal:
-          reversed_hints = []
-          for dp in hints:
-            if dp.type_ == _Type.POINTER or dp.type_ == _Type.SOFT_POINTER:
+    if regularisation_config.use_hint_reversal:
+      reversed_hints = []
+      for dp in hints:
+          if dp.type_ == _Type.POINTER:
               reversed_data = 1 - dp.data
               reversed_dp = probing.DataPoint(
-                  name=dp.name + '_reversed', location=_Location.EDGE, 
-                  type_=dp.type_, data=reversed_data)
+                  name=dp.name + '_reversed',
+                  location=_Location.EDGE,
+                  type_=_Type.POINTER,
+                  data=reversed_data
+              )
               reversed_hints.append(reversed_dp)
-          hints.extend(reversed_hints)
+          if dp.type_ == _Type.SOFT_POINTER:
+              reversed_data = 1 - dp.data
+              reversed_dp = probing.DataPoint(
+                  name=dp.name + '_reversed',
+                  location=_Location.EDGE,
+                  type_=_Type.SOFT_POINTER,
+                  data=reversed_data
+              )
+              reversed_hints.append(reversed_dp)
 
-        trajectories.append(hints)
+      hints.extend(reversed_hints)
+
+    if self.encode_hints:
+      trajectories.append(hints)
+
+        # if regularisation_config.use_hint_reversal:
+        #   reversed_hints = []
+        #   for dp in hints:
+        #     if dp.type_ == _Type.POINTER or dp.type_ == _Type.SOFT_POINTER:
+        #       reversed_data = 1 - dp.data
+        #       reversed_dp = probing.DataPoint(
+        #           name=dp.name + '_reversed', location=_Location.EDGE, 
+        #           type_=dp.type_, data=reversed_data)
+        #       reversed_hints.append(reversed_dp)
+        #   hints.extend(reversed_hints)
+
+        # trajectories.append(hints)
     
     # Debugging
     # for dp in hints:
