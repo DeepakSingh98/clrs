@@ -481,9 +481,9 @@ class Net(hk.Module):
     # Encode node/edge/graph features from inputs and (optionally) hints.
     trajectories = [inputs]
 
-    if regularisation_config.use_hint_reversal:
-      reversed_hints = []
-      for dp in hints:
+    # if regularisation_config.use_hint_reversal:
+    #   reversed_hints = []
+    #   for dp in hints:
           # if dp.type_ == _Type.POINTER:
           #     reversed_data = 1 - dp.data
           #     reversed_dp = probing.DataPoint(
@@ -493,17 +493,17 @@ class Net(hk.Module):
           #         data=reversed_data
           #     )
           #     reversed_hints.append(reversed_dp)
-          if dp.type_ == _Type.SOFT_POINTER:
-              reversed_data = 1 - dp.data
-              reversed_dp = probing.DataPoint(
-                  name=dp.name + '_reversed',
-                  location=_Location.EDGE,
-                  type_=_Type.SOFT_POINTER,
-                  data=reversed_data
-              )
-              reversed_hints.append(reversed_dp)
+      #     if dp.type_ == _Type.SOFT_POINTER:
+      #         reversed_data = 1 - dp.data # or should we use jnp.flip(dp.data, axis=1)?
+      #         reversed_dp = probing.DataPoint(
+      #             name=dp.name + '_reversed',
+      #             location=_Location.EDGE,
+      #             type_=_Type.SOFT_POINTER,
+      #             data=reversed_data
+      #         )
+      #         reversed_hints.append(reversed_dp)
 
-      hints.extend(reversed_hints)
+      # hints.extend(reversed_hints)
 
     if self.encode_hints:
       trajectories.append(hints)
@@ -522,13 +522,13 @@ class Net(hk.Module):
         # trajectories.append(hints)
     
     # Debugging
-    # for dp in hints:
-    #   if dp.name == 'pi_h':
-    #     jax.debug.print('pi_h \n {pi_h}', pi_h=dp)
-    #     # jax.debug.print('pi_h data \n {pi_h}', pi_h=dp.data)
-    #   elif dp.name == 's_prev':
-    #     jax.debug.print('s_prev \n {s_prev}', s_prev=dp)
-    #     # jax.debug.print('s_prev data \n {s_prev}', s_prev=dp.data)
+    for dp in hints:
+      if dp.name == 'pi_h':
+        jax.debug.print('pi_h \n {pi_h}', pi_h=dp)
+        # jax.debug.print('pi_h data \n {pi_h}', pi_h=dp.data)
+      elif dp.name == 's_prev':
+        jax.debug.print('s_prev \n {s_prev}', s_prev=dp)
+        # jax.debug.print('s_prev data \n {s_prev}', s_prev=dp.data)
 
     # for dp in reversed_hints:
     #   if dp.name == 'pi_h_reversed':
