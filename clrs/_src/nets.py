@@ -547,7 +547,6 @@ class Net(hk.Module):
       for dp in trajectory:
         try:
           dp = encoders.preprocess(dp, nb_nodes)
-          breakpoint()
           assert dp.type_ != _Type.SOFT_POINTER
           adj_mat = encoders.accum_adj_mat(dp, adj_mat)
           encoder = encs[dp.name]
