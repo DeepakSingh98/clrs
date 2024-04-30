@@ -111,6 +111,7 @@ def accum_edge_fts(encoders, dp: _DataPoint, edge_fts: _Array) -> _Array:
       encoding_2 = encoders[1](jnp.expand_dims(dp.data, -1))
 
       if "reversed" in dp.name:
+        breakpoint()
         edge_fts += jnp.mean(encoding, axis=1, keepdims=True) + jnp.mean(encoding_2, axis=2, keepdims=True)
       else:
         edge_fts += jnp.mean(encoding, axis=1) + jnp.mean(encoding_2, axis=2)
