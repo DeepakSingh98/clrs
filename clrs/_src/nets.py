@@ -506,26 +506,27 @@ class Net(hk.Module):
       # hints.extend(reversed_hints)
 
     if self.encode_hints:
-      # trajectories.append(hints)
+      trajectories.append(hints)
 
-      if regularisation_config.use_hint_reversal:
-          reversed_hints = []
-          for dp in hints:
-            if dp.type_ == _Type.POINTER:
-              reversed_data = jnp.flip(dp.data, axis=1)
-              reversed_dp = probing.DataPoint(
-                  name=dp.name + '_reversed', location=_Location.EDGE, 
-                  type_=dp.type_, data=reversed_data)
-              reversed_hints.append(reversed_dp)
-            # if dp.type_ == _Type.SOFT_POINTER:
+      # if regularisation_config.use_hint_reversal:
+      #     reversed_hints = []
+      #     for dp in hints:
+
+      #       # Create edge based pointers of shape (batch, nb_nodes, nb_nodes, nb_nodes, hidden_dim)
+      #       if dp.type_ == _Type.POINTER:
+      #         reversed_data = 
+      #         reversed_dp = probing.DataPoint(
+      #             name=dp.name + '_reversed',
+              
+
             #   reversed_data = jnp.transpose(dp.data, axes=(0, 2, 1))
             #   reversed_dp = probing.DataPoint(
             #       name=dp.name + '_reversed', location=_Location.EDGE, 
             #       type_=dp.type_, data=reversed_data)
             #   reversed_hints.append(reversed_dp)
-          hints.extend(reversed_hints)
+      #     hints.extend(reversed_hints)
 
-      trajectories.append(hints)
+      # trajectories.append(hints)
     
     # # # Debugging
     # for dp in hints:
