@@ -71,7 +71,8 @@ def preprocess(dp: _DataPoint, nb_nodes: int) -> _DataPoint:
   """
   new_type = dp.type_
   if dp.type_ == _Type.POINTER:
-    breakpoint()
+    if dp.location == _Location.EDGE:
+      breakpoint()
     data = hk.one_hot(dp.data, nb_nodes)
   else:
     data = dp.data.astype(jnp.float32)
