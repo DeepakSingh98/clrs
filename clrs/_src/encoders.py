@@ -71,8 +71,6 @@ def preprocess(dp: _DataPoint, nb_nodes: int) -> _DataPoint:
   """
   new_type = dp.type_
   if dp.type_ == _Type.POINTER:
-    if dp.location == _Location.EDGE:
-      breakpoint()
     data = hk.one_hot(dp.data, nb_nodes)
   else:
     data = dp.data.astype(jnp.float32)
@@ -112,11 +110,10 @@ def accum_edge_fts(encoders, dp: _DataPoint, edge_fts: _Array) -> _Array:
       # Aggregate pointer contributions across sender and receiver nodes.
       encoding_2 = encoders[1](jnp.expand_dims(dp.data, -1))
 
-      # if "reversed" in dp.name:
-      #   edge_fts += jnp.mean(encoding, axis=1, keepdims=True) + jnp.mean(encoding_2, axis=2, keepdims=True)
-      # else:
-      breakpoint()
-      edge_fts += jnp.mean(encoding, axis=1) + jnp.mean(encoding_2, axis=2)
+      if "reversed" in dp.name:
+        edge_fts += jnp.mean(encoding, axis=1, keepdims=True) + jnp.mean(encoding_2, axis=2, keepdims=True)
+      else:
+        edge_fts += jnp.mean(encoding, axis=1) + jnp.mean(encoding_2, axis=2)
     else:
       edge_fts += encoding
 

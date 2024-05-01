@@ -481,52 +481,22 @@ class Net(hk.Module):
     # Encode node/edge/graph features from inputs and (optionally) hints.
     trajectories = [inputs]
 
-    # if regularisation_config.use_hint_reversal:
-    #   reversed_hints = []
-    #   for dp in hints:
-          # if dp.type_ == _Type.POINTER:
-          #     reversed_data = 1 - dp.data
-          #     reversed_dp = probing.DataPoint(
-          #         name=dp.name + '_reversed',
-          #         location=_Location.EDGE,
-          #         type_=_Type.POINTER,
-          #         data=reversed_data
-          #     )
-          #     reversed_hints.append(reversed_dp)
-      #     if dp.type_ == _Type.SOFT_POINTER:
-      #         reversed_data = 1 - dp.data # or should we use jnp.flip(dp.data, axis=1)?
-      #         reversed_dp = probing.DataPoint(
-      #             name=dp.name + '_reversed',
-      #             location=_Location.EDGE,
-      #             type_=_Type.SOFT_POINTER,
-      #             data=reversed_data
-      #         )
-      #         reversed_hints.append(reversed_dp)
-
-      # hints.extend(reversed_hints)
-
     if self.encode_hints:
+
+      if regularisation_config.use_hint_reversal:
+          reversed_hints = []
+          for dp in hints:
+
+            # Create edge based pointers of shape (batch, nb_nodes, nb_nodes, nb_nodes, hidden_dim)
+            if dp.type_ == _Type.SOFT_POINTER
+              reversed_data = jnp.transpose(dp.data, axes=(0, 2, 1))
+              reversed_dp = probing.DataPoint(
+                  name=dp.name + '_reversed', location=_Location.EDGE, 
+                  type_=dp.type_, data=reversed_data)
+              reversed_hints.append(reversed_dp)
+          hints.extend(reversed_hints)
+
       trajectories.append(hints)
-
-      # if regularisation_config.use_hint_reversal:
-      #     reversed_hints = []
-      #     for dp in hints:
-
-      #       # Create edge based pointers of shape (batch, nb_nodes, nb_nodes, nb_nodes, hidden_dim)
-      #       if dp.type_ == _Type.POINTER:
-      #         reversed_data = 
-      #         reversed_dp = probing.DataPoint(
-      #             name=dp.name + '_reversed',
-              
-
-            #   reversed_data = jnp.transpose(dp.data, axes=(0, 2, 1))
-            #   reversed_dp = probing.DataPoint(
-            #       name=dp.name + '_reversed', location=_Location.EDGE, 
-            #       type_=dp.type_, data=reversed_data)
-            #   reversed_hints.append(reversed_dp)
-      #     hints.extend(reversed_hints)
-
-      # trajectories.append(hints)
     
     # # # Debugging
     # for dp in hints:
