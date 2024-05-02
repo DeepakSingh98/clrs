@@ -177,6 +177,17 @@ def _preprocess(data_point, algorithm=None):
       outputs.append(dp)
     else:
       hints.append(dp)
+
+    # if regularisation_config.use_hint_reversal:
+    #     import jax.numpy as jnp
+    #     reversed_hints = [
+    #         probing.DataPoint(dp.name + '_reversed', specs.Location.EDGE, dp.type_, np.flip(dp.data, axis=1))
+    #         for dp in hints if dp.type_ == 'pointer'
+    #     ]
+    #     for rev_dp in reversed_hints:
+    #         specs.SPECS[algorithm][rev_dp.name] = (specs.Stage.HINT, rev_dp.location, rev_dp.type_)
+    #     hints.extend(reversed_hints)
+
   return samplers.Feedback(
       samplers.Features(tuple(inputs), tuple(hints), lengths), tuple(outputs))
 
