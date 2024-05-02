@@ -487,31 +487,19 @@ class Net(hk.Module):
           reversed_hints = []
           for dp in hints:
 
-            # Reversal logic
-            # if pointer
-            # if node based
-            # flip and expand the dim to make reversed edge based
-            # if edge based
-            # just flip
-            # shouldn't be other cases so do error handling
-            # soft ptrs should be auto generated through the decoder so we dont need to handle those explictly
-
+            # Check if ptr
             if dp.type_ == _Type.POINTER:
 
               breakpoint()
 
+              # if node based convert to one hot
               if dp.location == _Location.NODE:
-                reversed_data = jnp.flip(dp.data, axis=1)
                 reversed_data = hk.one_hot(reversed_data, nb_nodes)
+              
+              # Transpose to implement reversal
+              reversed_data = jnp.matrix_transpose(dp.data)
 
-              elif dp.location == _Location.EDGE:
-                reversed_data = jnp.transpose(dp.data, axes=(0, 2, 1))
-
-              else:
-                # raise the right kind of error
-                pass
-
-              # Add the reversed dp to hints
+              # Add the dp to hints
               reversed_dp = probing.DataPoint(
                   name=dp.name + '_reversed', location=_Location.EDGE, 
                   type_=dp.type_, data=reversed_data)
