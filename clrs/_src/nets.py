@@ -147,7 +147,11 @@ class Net(hk.Module):
         force_mask = None
       for hint in hints:
         hint_data = jnp.asarray(hint.data)[i]
-        _, loc, typ = spec[hint.name]
+        try:
+            _, loc, typ = spec[hint.name]
+        except:
+            loc = _Location.EDGE
+            t = _Type.POINTER
         if needs_noise:
           if (typ == _Type.POINTER and
               decoded_hint[hint.name].type_ == _Type.SOFT_POINTER):
@@ -325,64 +329,6 @@ class Net(hk.Module):
 
     return output_preds, hint_preds, latents
 
-  # def _construct_encoders_decoders(self):
-  #   """Constructs encoders and decoders, separate for each algorithm."""
-
-  #   encoders_ = []
-  #   decoders_ = []
-  #   enc_algo_idx = None
-  #   all_enc_keys = set()
-  #   all_dec_keys = set()
-  #   shared_encoder = {}
-  #   shared_decoder = {}
-
-
-  #   for (algo_idx, spec) in enumerate(self.spec):
-  #     enc = {}
-  #     dec = {}
-  #     for name, (stage, loc, t) in spec.items():
-  #       if stage == _Stage.INPUT or (
-  #           stage == _Stage.HINT and self.encode_hints):
-  #         # Build input encoders.
-  #         if name == specs.ALGO_IDX_INPUT_NAME:
-  #           if enc_algo_idx is None:
-  #             enc_algo_idx = [hk.Linear(self.hidden_dim,
-  #                                       name=f'{name}_enc_linear')]
-  #           enc[name] = enc_algo_idx
-  #         else:
-  #           enc[name] = encoders.construct_encoders(
-  #               stage, loc, t, hidden_dim=self.hidden_dim,
-  #               init=self.encoder_init,
-  #               name=f'algo_{algo_idx}_{name}')
-            
-  #         all_enc_keys.add(name)
-
-  #       if stage == _Stage.OUTPUT or (
-  #           stage == _Stage.HINT and self.decode_hints):
-  #         # Build output decoders.
-  #         dec[name] = decoders.construct_decoders(
-  #             loc, t, hidden_dim=self.hidden_dim,
-  #             nb_dims=self.nb_dims[algo_idx][name],
-  #             name=f'algo_{algo_idx}_{name}')
-          
-  #         all_dec_keys.add(name)
-
-  #       if latents_config.use_shared_latent_space:
-  #           for key in all_enc_keys:
-  #               if key not in shared_encoder:
-  #                   shared_encoder[key] = enc.get(key)
-  #           for key in all_dec_keys:
-  #               if key not in shared_decoder:
-  #                   shared_decoder[key] = dec.get(key)
-
-  #     latents_config.shared_encoder = shared_encoder
-  #     latents_config.shared_decoder = shared_decoder
-
-  #     encoders_.append(enc)
-  #     decoders_.append(dec)
-
-  #   return encoders_, decoders_
-
   def _construct_encoders_decoders(self):
     """Constructs encoders and decoders, separate for each algorithm."""
     encoders_ = []
@@ -436,12 +382,29 @@ class Net(hk.Module):
                         if reversed_name not in latents_config.shared_encoder:
                             latents_config.shared_encoder[reversed_name] = encoders.construct_encoders(
                                 stage, reversed_loc, t, hidden_dim=self.hidden_dim,
-                                init=self.encoder_init, name=f'shared_{reversed_name}',
+                                init=self.encoder_init, name=f'shared_{reversed_name}_enc',
                             )
                     else:
                         enc[reversed_name] = encoders.construct_encoders(
                             stage, reversed_loc, t, hidden_dim=self.hidden_dim,
                             init=self.encoder_init, name=f'algo_{algo_idx}_{reversed_name}',
+                        )
+
+                if stage == _Stage.HINT and t == _Type.POINTER and self.decode_hints:
+                    reversed_name = name + '_reversed'
+                    reversed_loc = _Location.EDGE
+                    if latents_config.use_shared_latent_space:
+                        if reversed_name not in latents_config.shared_decoder:
+                            latents_config.shared_decoder[reversed_name] = decoders.construct_decoders(
+                                reversed_loc, t, hidden_dim=self.hidden_dim,
+                                nb_dims=self.nb_dims[algo_idx][reversed_name],
+                                name=f'shared_{name}_dec'
+                            )
+                    else:
+                        dec[reversed_name] = decoders.construct_decoders(
+                            reversed_loc, t, hidden_dim=self.hidden_dim,
+                            nb_dims=self.nb_dims[algo_idx][name],
+                            name=f'algo_{algo_idx}_{reversed_name}'
                         )
 
         encoders_.append(enc)
@@ -482,59 +445,22 @@ class Net(hk.Module):
     trajectories = [inputs]
 
     if self.encode_hints:
-
-      if regularisation_config.use_hint_reversal:
-          reversed_hints = []
-          for dp in hints:
-
-            # Check if ptr
-            if dp.type_ == _Type.POINTER:
-
-              breakpoint()
-
-              # if node based convert to one hot
-              if dp.location == _Location.NODE:
-                reversed_data = hk.one_hot(reversed_data, nb_nodes)
-              
-              # Transpose to implement reversal
-              reversed_data = jnp.matrix_transpose(dp.data)
-
-              # Add the dp to hints
-              reversed_dp = probing.DataPoint(
-                  name=dp.name + '_reversed', location=_Location.EDGE, 
-                  type_=dp.type_, data=reversed_data)
-              reversed_hints.append(reversed_dp)
-          hints.extend(reversed_hints)
-
-          #   if dp.type_ == _Type.POINTER:
-          #     breakpoint()
-
-          #   # Create edge based pointers of shape (batch, nb_nodes, nb_nodes, nb_nodes, hidden_dim)
-          #   if dp.type_ == _Type.SOFT_POINTER:
-          #     breakpoint()
-          #     reversed_data = jnp.transpose(dp.data, axes=(0, 2, 1))
-          #     reversed_dp = probing.DataPoint(
-          #         name=dp.name + '_reversed', location=_Location.EDGE, 
-          #         type_=dp.type_, data=reversed_data)
-          #     reversed_hints.append(reversed_dp)
-          # hints.extend(reversed_hints)
-
       trajectories.append(hints)
     
-    # # Debugging
-    for dp in hints:
-      if dp.name == 'pi_h':
-        jax.debug.print('pi_h \n {pi_h}', pi_h=dp)
-        # jax.debug.print('pi_h data \n {pi_h}', pi_h=dp.data)
-      elif dp.name == 's_prev':
-        jax.debug.print('s_prev \n {s_prev}', s_prev=dp)
-        # jax.debug.print('s_prev data \n {s_prev}', s_prev=dp.data)
-      if dp.name == 'pi_h_reversed':
-        jax.debug.print('pi_h_reversed \n {pi_h_reversed}', pi_h_reversed=dp)
-        # jax.debug.print('pi_h_reversed data \n {pi_h_reversed}', pi_h_reversed=dp.data)
-      elif dp.name == 's_prev_reversed':
-        jax.debug.print('s_prev_reversed \n {s_prev_reversed}', s_prev_reversed=dp)
-        # jax.debug.print('s_prev_reversed data \n {s_prev_reversed}', s_prev_reversed=dp.data)
+    # # # Debugging
+    # for dp in hints:
+    #   if dp.name == 'pi_h':
+    #     jax.debug.print('pi_h \n {pi_h}', pi_h=dp)
+    #     # jax.debug.print('pi_h data \n {pi_h}', pi_h=dp.data)
+    #   elif dp.name == 's_prev':
+    #     jax.debug.print('s_prev \n {s_prev}', s_prev=dp)
+    #     # jax.debug.print('s_prev data \n {s_prev}', s_prev=dp.data)
+    #   if dp.name == 'pi_h_reversed':
+    #     jax.debug.print('pi_h_reversed \n {pi_h_reversed}', pi_h_reversed=dp)
+    #     # jax.debug.print('pi_h_reversed data \n {pi_h_reversed}', pi_h_reversed=dp.data)
+    #   elif dp.name == 's_prev_reversed':
+    #     jax.debug.print('s_prev_reversed \n {s_prev_reversed}', s_prev_reversed=dp)
+    #     # jax.debug.print('s_prev_reversed data \n {s_prev_reversed}', s_prev_reversed=dp.data)
 
 
     for trajectory in trajectories:

@@ -178,15 +178,31 @@ def _preprocess(data_point, algorithm=None):
     else:
       hints.append(dp)
 
-    # if regularisation_config.use_hint_reversal:
-    #     import jax.numpy as jnp
-    #     reversed_hints = [
-    #         probing.DataPoint(dp.name + '_reversed', specs.Location.EDGE, dp.type_, np.flip(dp.data, axis=1))
-    #         for dp in hints if dp.type_ == 'pointer'
-    #     ]
-    #     for rev_dp in reversed_hints:
-    #         specs.SPECS[algorithm][rev_dp.name] = (specs.Stage.HINT, rev_dp.location, rev_dp.type_)
-    #     hints.extend(reversed_hints)
+  # from clrs._src.global_config import regularisation_config
+
+  # if regularisation_config.use_hint_reversal:
+  #     breakpoint()
+  #     reversed_hints = []
+  #     for dp in hints:
+    
+  #       # Check if ptr
+  #       if dp.type_ == 'pointer':
+    
+  #         data = dp.data
+    
+  #         # if node based convert to one hot
+  #         if dp.location == _Location.NODE:
+  #           data = hk.one_hot(data, nb_nodes)
+          
+  #         # Transpose to implement reversal
+  #         reversed_data = jnp.matrix_transpose(data)
+    
+  #         # Add the dp to hints
+  #         reversed_dp = probing.DataPoint(
+  #             name=dp.name + '_reversed', location=_Location.EDGE, 
+  #             type_=dp.type_, data=reversed_data)
+    
+  #         reversed_hints.append(reversed_dp)
 
   return samplers.Feedback(
       samplers.Features(tuple(inputs), tuple(hints), lengths), tuple(outputs))

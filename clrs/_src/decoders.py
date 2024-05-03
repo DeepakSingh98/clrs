@@ -152,7 +152,11 @@ def postprocess(spec: _Spec, preds: Dict[str, _Array],
   """
   result = {}
   for name in preds.keys():
-    _, loc, t = spec[name]
+    try:
+        _, loc, t = spec[name]
+    except:
+        loc = _Location.EDGE
+        t = _Type.POINTER
     new_t = t
     data = preds[name]
     if t == _Type.SCALAR:
@@ -233,8 +237,17 @@ def decode_fts(
           hint_preds[name] = preds
         else:
           raise ValueError(f"Found unexpected decoder {name}")
+            
+    elif "_reversed" in name:
+        stage = _Stage.HINT
+        loc = _Location.EDGE
+        t = _Type.POINTER
+
+        preds = _decode_edge_fts(decoder, t, h_t, edge_fts, adj_mat,
+                                   inf_bias_edge)
+        hint_preds[name] = preds
     else:
-        continue
+        continue        
 
   return hint_preds, output_preds
 

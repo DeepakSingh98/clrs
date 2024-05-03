@@ -246,6 +246,9 @@ def make_sampler(length: int,
         )
     sampler = _iterate_sampler(sampler, batch_size)
 
+  if regularisation_config.use_hint_reversal:
+    sampler = map(regularisation_config.reverse_pointers, sampler, spec)
+  
   if randomize_pos:
     sampler = clrs.process_random_pos(sampler, rng)
   if enforce_pred_as_input and algorithm in PRED_AS_INPUT_ALGOS:

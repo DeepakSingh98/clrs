@@ -1,7 +1,9 @@
 import os
 import numpy as np
 from absl import logging
-
+import jax
+import jax.numpy as jnp
+from clrs._src import probing
 
 class LatentsConfig:
     def __init__(self):
@@ -49,5 +51,26 @@ class RegularisationConfig:
         self.use_hint_reversal = False
         self.use_causal_augmentation = False
         self.use_hint_relic = False
+
+    def reverse_pointers(self, feedback):
+
+        hints = feedback.features.hints
+        reversed_hints = []
+        for dp in hints:
+            if dp.type_ == 'pointer':
+                data = dp.data
+                if dp.location == 'node':
+                    nb_nodes = dp.data.shape[-1]
+                    data = jax.nn.one_hot(data, nb_nodes)
+                reversed_data = jnp.matrix_transpose(data)
+                reversed_dp = probing.DataPoint(
+                    name=dp.name + '_reversed',
+                    location='edge',
+                    type_='pointer',
+                    data=reversed_data
+                )
+                reversed_hints.append(reversed_dp)
+        feedback.features.hints.extend(reversed_hints)
+        return feedback
 
 regularisation_config = RegularisationConfig()
