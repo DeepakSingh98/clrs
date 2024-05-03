@@ -158,6 +158,7 @@ class BaselineModel(model.Model):
       hint_repred_mode: str = 'soft',
       name: str = 'base_model',
       nb_msg_passing_steps: int = 1,
+      load_pretrained_path: str = None,
   ):
     """Constructor for BaselineModel.
 
@@ -216,6 +217,7 @@ class BaselineModel(model.Model):
     self.decode_hints = decode_hints
     self.ssl_reg = ssl_reg
     self.checkpoint_path = checkpoint_path
+    self.load_pretrained_path = load_pretrained_path
     self.name = name
     self._freeze_processor = freeze_processor
     if grad_clip_max_norm != 0.0:
