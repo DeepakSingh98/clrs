@@ -144,6 +144,9 @@ flags.DEFINE_boolean('use_skip_connection', False,
 
 flags.DEFINE_string('load_pretrained_path', None,
                       'Path from which to load a checkpoint.')
+flags.DEFINE_string('pretrain_algorithm', None, 
+                    'Algorithm to use for pretraining (None for no pretraining).')
+flags.DEFINE_integer('pretrain_steps', 0, 'Number of pretraining steps.')
 
 FLAGS = flags.FLAGS
 
