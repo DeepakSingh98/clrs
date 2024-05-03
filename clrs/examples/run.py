@@ -247,7 +247,7 @@ def make_sampler(length: int,
     sampler = _iterate_sampler(sampler, batch_size)
 
   if regularisation_config.use_hint_reversal:
-    sampler = map(regularisation_config.reverse_pointers, sampler, spec)
+    sampler = map(regularisation_config.reverse_pointers, sampler)
   
   if randomize_pos:
     sampler = clrs.process_random_pos(sampler, rng)
