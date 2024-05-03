@@ -532,9 +532,9 @@ def main(unused_argv):
           train_model.init(all_features, FLAGS.seed + 1)
 
         if FLAGS.load_pretrained_path:
-          train_model.load_pretrained_model(FLAGS.load_pretrained_path, 'best.pkl')
-          eval_model.load_pretrained_model(FLAGS.load_pretrained_path, 'best.pkl')
-
+          train_model.load_pretrained_model('best.pkl')
+          eval_model.load_pretrained_model('best.pkl')
+          
       # Training step.
       for algo_idx in range(len(train_samplers)):
         feedback = feedback_list[algo_idx]
