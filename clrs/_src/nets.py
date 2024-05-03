@@ -151,7 +151,7 @@ class Net(hk.Module):
             _, loc, typ = spec[hint.name]
         except:
             loc = _Location.EDGE
-            t = _Type.POINTER
+            typ = _Type.POINTER
         if needs_noise:
           if (typ == _Type.POINTER and
               decoded_hint[hint.name].type_ == _Type.SOFT_POINTER):
