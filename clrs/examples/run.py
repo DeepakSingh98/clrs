@@ -142,6 +142,9 @@ flags.DEFINE_integer('nb_hgp_levels', 1,
 flags.DEFINE_boolean('use_skip_connection', False,
                       'Whether to use skip connections in the hierarchical graph processor.')
 
+flags.DEFINE_string('load_pretrained_path', None,
+                      'Path from which to load a checkpoint.')
+
 FLAGS = flags.FLAGS
 
 
@@ -526,6 +529,10 @@ def main(unused_argv):
           train_model.init(all_length_features[:-1], FLAGS.seed + 1)
         else:
           train_model.init(all_features, FLAGS.seed + 1)
+
+        if FLAGS.load_pretrained_path:
+          train_model.restore_model(FLAGS.load_pretrained_path, only_load_processor=True)
+          eval_model.restore_model(FLAGS.load_pretrained_path, only_load_processor=True)
 
       # Training step.
       for algo_idx in range(len(train_samplers)):

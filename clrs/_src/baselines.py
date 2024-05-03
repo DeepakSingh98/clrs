@@ -475,6 +475,18 @@ class BaselineModel(model.Model):
             ))
 
     return losses_
+  
+  def load_pretrained_model(self, file_name: str, only_load_processor: bool = False):
+    """Load pretrained model from `file_name`."""
+    path = os.path.join(self.load_pretrained_path, file_name)
+    with open(path, 'rb') as f:
+      loaded_state = pickle.load(f)
+      if only_load_processor:
+        loaded_params = _filter_in_processor(loaded_state['params'])
+      else:
+        loaded_params = loaded_state['params']
+      self.params = hk.data_structures.merge(self.params, loaded_params)
+      self.opt_state = loaded_state['opt_state']
 
   def restore_model(self, file_name: str, only_load_processor: bool = False):
     """Restore model from `file_name`."""
