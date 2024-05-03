@@ -514,6 +514,47 @@ def main(unused_argv):
 
   else: 
 
+    # Pretraining Logic
+    if FLAGS.pretrain_algorithm:
+      pretrain_algo_idx = FLAGS.algorithms.index(FLAGS.pretrain_algorithm)
+      for step in range(FLAGS.pretrain_steps):
+        # Initialize model.
+        if step == 0:
+          all_features = [f.features for f in feedback_list]
+          if FLAGS.chunked_training:
+            # We need to initialize the model with samples of all lengths for
+            # all algorithms. Also, we need to make sure that the order of these
+            # sample sizes is the same as the order of the actual training sizes.
+            all_length_features = [all_features] + [
+                [next(t).features for t in train_samplers]
+                for _ in range(len(train_lengths))]
+            train_model.init(all_length_features[:-1], FLAGS.seed + 1)
+          else:
+            train_model.init(all_features, FLAGS.seed + 1)
+  
+        # Pretraining step on the chosen algorithm.
+        feedback = next(train_samplers[pretrain_algo_idx])
+        rng_key, new_rng_key = jax.random.split(rng_key)
+        length_and_algo_idx = (length_idx, pretrain_algo_idx)
+        cur_loss = train_model.feedback(rng_key, feedback, length_and_algo_idx)
+        rng_key = new_rng_key
+  
+        # Logging and Update current_train_items
+        if FLAGS.chunked_training:
+          examples_in_chunk = np.sum(feedback.features.is_last).item()
+        else:
+          examples_in_chunk = len(feedback.features.lengths)
+        current_train_items[pretrain_algo_idx] += examples_in_chunk
+        logging.info('(pretrain) Algo %s step %i current loss %f, current_train_items %i.',
+                      FLAGS.algorithms[pretrain_algo_idx], step,
+                      cur_loss, current_train_items[pretrain_algo_idx])
+  
+        step += 1
+        length_idx = (length_idx + 1) % len(train_lengths)
+  
+      logging.info('Completed pretraining')
+
+
     while step < FLAGS.train_steps:
       feedback_list = [next(t) for t in train_samplers]
 
@@ -534,7 +575,7 @@ def main(unused_argv):
         if FLAGS.load_pretrained_path:
           train_model.load_pretrained_model('best.pkl')
           eval_model.load_pretrained_model('best.pkl')
-          
+
       # Training step.
       for algo_idx in range(len(train_samplers)):
         feedback = feedback_list[algo_idx]
