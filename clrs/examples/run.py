@@ -475,6 +475,7 @@ def main(unused_argv):
       hint_teacher_forcing=FLAGS.hint_teacher_forcing,
       hint_repred_mode=FLAGS.hint_repred_mode,
       nb_msg_passing_steps=FLAGS.nb_msg_passing_steps,
+      load_pretrained_path=FLAGS.load_pretrained_path,
       )
 
   eval_model = clrs.models.BaselineModel(
