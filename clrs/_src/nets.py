@@ -374,38 +374,38 @@ class Net(hk.Module):
                         name=f'algo_{algo_idx}_{name}'
                     )
             
-            if regularisation_config.use_hint_reversal:
-                if stage == _Stage.HINT and t == _Type.POINTER and self.encode_hints:
-                    reversed_name = name + '_reversed'
-                    reversed_loc = _Location.EDGE
-                    if latents_config.use_shared_latent_space:
-                        if reversed_name not in latents_config.shared_encoder:
-                            latents_config.shared_encoder[reversed_name] = encoders.construct_encoders(
-                                stage, reversed_loc, t, hidden_dim=self.hidden_dim,
-                                init=self.encoder_init, name=f'shared_{reversed_name}_enc',
-                            )
-                    else:
-                        enc[reversed_name] = encoders.construct_encoders(
-                            stage, reversed_loc, t, hidden_dim=self.hidden_dim,
-                            init=self.encoder_init, name=f'algo_{algo_idx}_{reversed_name}',
-                        )
+            # if regularisation_config.use_hint_reversal:
+            #     if stage == _Stage.HINT and t == _Type.POINTER and self.encode_hints:
+            #         reversed_name = name + '_reversed'
+            #         reversed_loc = _Location.EDGE
+            #         if latents_config.use_shared_latent_space:
+            #             if reversed_name not in latents_config.shared_encoder:
+            #                 latents_config.shared_encoder[reversed_name] = encoders.construct_encoders(
+            #                     stage, reversed_loc, t, hidden_dim=self.hidden_dim,
+            #                     init=self.encoder_init, name=f'shared_{reversed_name}_enc',
+            #                 )
+            #         else:
+            #             enc[reversed_name] = encoders.construct_encoders(
+            #                 stage, reversed_loc, t, hidden_dim=self.hidden_dim,
+            #                 init=self.encoder_init, name=f'algo_{algo_idx}_{reversed_name}',
+            #             )
 
-                if stage == _Stage.HINT and t == _Type.POINTER and self.decode_hints:
-                    reversed_name = name + '_reversed'
-                    reversed_loc = _Location.EDGE
-                    if latents_config.use_shared_latent_space:
-                        if reversed_name not in latents_config.shared_decoder:
-                            latents_config.shared_decoder[reversed_name] = decoders.construct_decoders(
-                                reversed_loc, t, hidden_dim=self.hidden_dim,
-                                nb_dims=self.nb_dims[algo_idx][reversed_name],
-                                name=f'shared_{name}_dec'
-                            )
-                    else:
-                        dec[reversed_name] = decoders.construct_decoders(
-                            reversed_loc, t, hidden_dim=self.hidden_dim,
-                            nb_dims=self.nb_dims[algo_idx][name],
-                            name=f'algo_{algo_idx}_{reversed_name}'
-                        )
+            #     if stage == _Stage.HINT and t == _Type.POINTER and self.decode_hints:
+            #         reversed_name = name + '_reversed'
+            #         reversed_loc = _Location.EDGE
+            #         if latents_config.use_shared_latent_space:
+            #             if reversed_name not in latents_config.shared_decoder:
+            #                 latents_config.shared_decoder[reversed_name] = decoders.construct_decoders(
+            #                     reversed_loc, t, hidden_dim=self.hidden_dim,
+            #                     nb_dims=self.nb_dims[algo_idx][reversed_name],
+            #                     name=f'shared_{name}_dec'
+            #                 )
+            #         else:
+            #             dec[reversed_name] = decoders.construct_decoders(
+            #                 reversed_loc, t, hidden_dim=self.hidden_dim,
+            #                 nb_dims=self.nb_dims[algo_idx][name],
+            #                 name=f'algo_{algo_idx}_{reversed_name}'
+            #             )
 
         encoders_.append(enc)
         decoders_.append(dec)
