@@ -28,12 +28,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from clrs._src.global_config import latents_config
-
-# if latents_config.use_shared_latent_space:
-#   SPECS = specs.SHARED_SORTING_SPECS
-# else:
-#   SPECS = specs.SPECS
+from clrs._src.global_config import regularisation_config
   
 
 def _correct_axis_filtering(tensor, index, name):
@@ -177,6 +172,9 @@ def _preprocess(data_point, algorithm=None):
       outputs.append(dp)
     else:
       hints.append(dp)
+  
+  reversed_hints = regularisation_config.reverse_pointers(hints)
+  hints.extend(reversed_hints)
 
   return samplers.Feedback(
       samplers.Features(tuple(inputs), tuple(hints), lengths), tuple(outputs))

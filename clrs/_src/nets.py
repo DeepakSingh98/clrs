@@ -334,83 +334,145 @@ class Net(hk.Module):
     encoders_ = []
     decoders_ = []
     enc_algo_idx = None
-
     for (algo_idx, spec) in enumerate(self.spec):
-        enc = {}
-        dec = {}
+      enc = {}
+      dec = {}
+      for name, (stage, loc, t) in spec.items():
+        if stage == _Stage.INPUT or (
+            stage == _Stage.HINT and self.encode_hints):
+          # Build input encoders.
+          if name == specs.ALGO_IDX_INPUT_NAME:
+            if enc_algo_idx is None:
+              enc_algo_idx = [hk.Linear(self.hidden_dim,
+                                        name=f'{name}_enc_linear')]
+            enc[name] = enc_algo_idx
+          else:
+            enc[name] = encoders.construct_encoders(
+                stage, loc, t, hidden_dim=self.hidden_dim,
+                init=self.encoder_init,
+                name=f'algo_{algo_idx}_{name}')
 
-        for name, (stage, loc, t) in spec.items():
-            if stage == _Stage.INPUT or (stage == _Stage.HINT and self.encode_hints):
-                # Build input encoders.
-                if name == specs.ALGO_IDX_INPUT_NAME:
-                    if enc_algo_idx is None:
-                        enc_algo_idx = [hk.Linear(self.hidden_dim, name=f'{name}_enc_linear')]
-                    enc[name] = enc_algo_idx
-                else:
-                    if latents_config.use_shared_latent_space:
-                        if name not in latents_config.shared_encoder:
-                            latents_config.shared_encoder[name] = encoders.construct_encoders(
-                                stage, loc, t, hidden_dim=self.hidden_dim,
-                                init=self.encoder_init, name=f'shared_{name}'
-                            )
-                    else:
-                        enc[name] = encoders.construct_encoders(
-                            stage, loc, t, hidden_dim=self.hidden_dim,
-                            init=self.encoder_init, name=f'algo_{algo_idx}_{name}'
-                        )
-            if stage == _Stage.OUTPUT or (stage == _Stage.HINT and self.decode_hints):
-                # Build output decoders.
-                if latents_config.use_shared_latent_space:
-                    if name not in latents_config.shared_decoder:
-                        latents_config.shared_decoder[name] = decoders.construct_decoders(
-                            loc, t, hidden_dim=self.hidden_dim,
-                            nb_dims=self.nb_dims[algo_idx][name],
-                            name=f'shared_{name}'
-                        )
-                else:
-                    dec[name] = decoders.construct_decoders(
-                        loc, t, hidden_dim=self.hidden_dim,
-                        nb_dims=self.nb_dims[algo_idx][name],
-                        name=f'algo_{algo_idx}_{name}'
-                    )
-            
-            # if regularisation_config.use_hint_reversal:
-            #     if stage == _Stage.HINT and t == _Type.POINTER and self.encode_hints:
-            #         reversed_name = name + '_reversed'
-            #         reversed_loc = _Location.EDGE
-            #         if latents_config.use_shared_latent_space:
-            #             if reversed_name not in latents_config.shared_encoder:
-            #                 latents_config.shared_encoder[reversed_name] = encoders.construct_encoders(
-            #                     stage, reversed_loc, t, hidden_dim=self.hidden_dim,
-            #                     init=self.encoder_init, name=f'shared_{reversed_name}_enc',
-            #                 )
-            #         else:
-            #             enc[reversed_name] = encoders.construct_encoders(
-            #                 stage, reversed_loc, t, hidden_dim=self.hidden_dim,
-            #                 init=self.encoder_init, name=f'algo_{algo_idx}_{reversed_name}',
-            #             )
+        if stage == _Stage.OUTPUT or (
+            stage == _Stage.HINT and self.decode_hints):
+          # Build output decoders.
+          dec[name] = decoders.construct_decoders(
+              loc, t, hidden_dim=self.hidden_dim,
+              nb_dims=self.nb_dims[algo_idx][name],
+              name=f'algo_{algo_idx}_{name}')                       )
 
-            #     if stage == _Stage.HINT and t == _Type.POINTER and self.decode_hints:
-            #         reversed_name = name + '_reversed'
-            #         reversed_loc = _Location.EDGE
-            #         if latents_config.use_shared_latent_space:
-            #             if reversed_name not in latents_config.shared_decoder:
-            #                 latents_config.shared_decoder[reversed_name] = decoders.construct_decoders(
-            #                     reversed_loc, t, hidden_dim=self.hidden_dim,
-            #                     nb_dims=self.nb_dims[algo_idx][reversed_name],
-            #                     name=f'shared_{name}_dec'
-            #                 )
-            #         else:
-            #             dec[reversed_name] = decoders.construct_decoders(
-            #                 reversed_loc, t, hidden_dim=self.hidden_dim,
-            #                 nb_dims=self.nb_dims[algo_idx][name],
-            #                 name=f'algo_{algo_idx}_{reversed_name}'
-            #             )
+        # Hint reversal
+        if regularisation_config.use_hint_reversal:
+          if stage == _Stage.HINT and t == _Type.POINTER and self.encode_hints):
+            name += '_reversed'
+            loc = _Location.EDGE
+            # Build input encoders.
+            if reversed_name == specs.ALGO_IDX_INPUT_NAME:
+              if enc_algo_idx is None:
+                enc_algo_idx = [hk.Linear(self.hidden_dim,
+                                          name=f'{name}_enc_linear')]
+              enc[name] = enc_algo_idx
+            else:
+              enc[name] = encoders.construct_encoders(
+                  stage, loc, t, hidden_dim=self.hidden_dim,
+                  init=self.encoder_init,
+                  name=f'algo_{algo_idx}_{name}')
 
-        encoders_.append(enc)
-        decoders_.append(dec)
+          if stage == _Stage.OUTPUT or (
+              stage == _Stage.HINT and self.decode_hints):
+            # Build output decoders.
+            dec[name] = decoders.construct_decoders(
+                loc, t, hidden_dim=self.hidden_dim,
+                nb_dims=self.nb_dims[algo_idx][name],
+                name=f'algo_{algo_idx}_{name}')
+
+      encoders_.append(enc)
+      decoders_.append(dec)
 
     return encoders_, decoders_
+
+
+  # def _construct_encoders_decoders(self):
+  #   """Constructs encoders and decoders, separate for each algorithm."""
+  #   encoders_ = []
+  #   decoders_ = []
+  #   enc_algo_idx = None
+
+  #   for (algo_idx, spec) in enumerate(self.spec):
+  #       enc = {}
+  #       dec = {}
+
+  #       for name, (stage, loc, t) in spec.items():
+  #           if stage == _Stage.INPUT or (stage == _Stage.HINT and self.encode_hints):
+  #               # Build input encoders.
+  #               if name == specs.ALGO_IDX_INPUT_NAME:
+  #                   if enc_algo_idx is None:
+  #                       enc_algo_idx = [hk.Linear(self.hidden_dim, name=f'{name}_enc_linear')]
+  #                   enc[name] = enc_algo_idx
+  #               else:
+  #                   if latents_config.use_shared_latent_space:
+  #                       if name not in latents_config.shared_encoder:
+  #                           latents_config.shared_encoder[name] = encoders.construct_encoders(
+  #                               stage, loc, t, hidden_dim=self.hidden_dim,
+  #                               init=self.encoder_init, name=f'shared_{name}'
+  #                           )
+  #                   else:
+  #                       enc[name] = encoders.construct_encoders(
+  #                           stage, loc, t, hidden_dim=self.hidden_dim,
+  #                           init=self.encoder_init, name=f'algo_{algo_idx}_{name}'
+  #                       )
+  #           if stage == _Stage.OUTPUT or (stage == _Stage.HINT and self.decode_hints):
+  #               # Build output decoders.
+  #               if latents_config.use_shared_latent_space:
+  #                   if name not in latents_config.shared_decoder:
+  #                       latents_config.shared_decoder[name] = decoders.construct_decoders(
+  #                           loc, t, hidden_dim=self.hidden_dim,
+  #                           nb_dims=self.nb_dims[algo_idx][name],
+  #                           name=f'shared_{name}'
+  #                       )
+  #               else:
+  #                   dec[name] = decoders.construct_decoders(
+  #                       loc, t, hidden_dim=self.hidden_dim,
+  #                       nb_dims=self.nb_dims[algo_idx][name],
+  #                       name=f'algo_{algo_idx}_{name}'
+  #                   )
+            
+  #           if regularisation_config.use_hint_reversal:
+  #               if stage == _Stage.HINT and t == _Type.POINTER and self.encode_hints:
+  #                   reversed_name = name
+  #                   reversed_loc = _Location.EDGE
+  #                   if latents_config.use_shared_latent_space:
+  #                       if reversed_name not in latents_config.shared_encoder:
+  #                           latents_config.shared_encoder[reversed_name] = encoders.construct_encoders(
+  #                               stage, reversed_loc, t, hidden_dim=self.hidden_dim,
+  #                               init=self.encoder_init, name=f'shared_{reversed_name}_enc',
+  #                           )
+  #                   else:
+  #                       enc[reversed_name] = encoders.construct_encoders(
+  #                           stage, reversed_loc, t, hidden_dim=self.hidden_dim,
+  #                           init=self.encoder_init, name=f'algo_{algo_idx}_{reversed_name}',
+  #                       )
+
+  #               if stage == _Stage.HINT and t == _Type.POINTER and self.decode_hints:
+  #                   reversed_name = name
+  #                   reversed_loc = _Location.EDGE
+  #                   if latents_config.use_shared_latent_space:
+  #                       if reversed_name not in latents_config.shared_decoder:
+  #                           latents_config.shared_decoder[reversed_name] = decoders.construct_decoders(
+  #                               reversed_loc, t, hidden_dim=self.hidden_dim,
+  #                               nb_dims=self.nb_dims[algo_idx][reversed_name],
+  #                               name=f'shared_{name}_dec'
+  #                           )
+  #                   else:
+  #                       dec[reversed_name] = decoders.construct_decoders(
+  #                           reversed_loc, t, hidden_dim=self.hidden_dim,
+  #                           nb_dims=self.nb_dims[algo_idx][name],
+  #                           name=f'algo_{algo_idx}_{reversed_name}'
+  #                       )
+
+  #       encoders_.append(enc)
+  #       decoders_.append(dec)
+
+  #   return encoders_, decoders_
 
 
   def _one_step_pred(
