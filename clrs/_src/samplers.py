@@ -109,18 +109,17 @@ class Sampler(abc.ABC):
           assert dp.data.shape[1] == 1  # batching axis
           if dp.data.shape[0] > self.max_steps:
             self.max_steps = dp.data.shape[0]
+
+      if regularisation_config.use_hint_reversal:
+        reversed_hints = regularisation_config.reverse_pointers(hint)
+        hint.extend(reversed_hints)
+
     else:
       logging.info('Creating a dataset with %i samples.', num_samples)
       (self._inputs, self._outputs, self._hints,
        self._lengths) = self._make_batch(num_samples, spec, 0, algorithm, *args,
                                          **kwargs)
 
-    if regularisation_config.use_hint_reversal:
-      reversed_hints = regularisation_config.reverse_pointers(self._hints)
-      self._hints.extend(reversed_hints)
-    
-    if regularisation_config.use_causal_augmentation:
-      pass
 
   def _make_batch(self, num_samples: int, spec: specs.Spec, min_length: int,
                   algorithm: Algorithm, *args, **kwargs):

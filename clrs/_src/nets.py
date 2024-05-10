@@ -366,7 +366,7 @@ class Net(hk.Module):
             name += '_reversed'
             loc = _Location.EDGE
             # Build input encoders.
-            if reversed_name == specs.ALGO_IDX_INPUT_NAME:
+            if name == specs.ALGO_IDX_INPUT_NAME:
               if enc_algo_idx is None:
                 enc_algo_idx = [hk.Linear(self.hidden_dim,
                                           name=f'{name}_enc_linear')]
