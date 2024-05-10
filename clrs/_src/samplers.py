@@ -29,12 +29,7 @@ from clrs._src import specs
 import jax
 import numpy as np
 
-from clrs._src.global_config import latents_config
-
-# if latents_config.use_shared_latent_space:
-#   SPECS = specs.SHARED_SORTING_SPECS
-# else:
-#   SPECS = specs.SPECS
+from clrs._src.global_config import regularisation_config
 
 _Array = np.ndarray
 _DataPoint = probing.DataPoint
@@ -119,6 +114,13 @@ class Sampler(abc.ABC):
       (self._inputs, self._outputs, self._hints,
        self._lengths) = self._make_batch(num_samples, spec, 0, algorithm, *args,
                                          **kwargs)
+
+    if regularisation_config.use_hint_reversal:
+      reversed_hints = regularisation_config.reverse_pointers(self._hints)
+      self._hints.extend(reversed_hints)
+    
+    if regularisation_config.use_data_aug:
+      pass
 
   def _make_batch(self, num_samples: int, spec: specs.Spec, min_length: int,
                   algorithm: Algorithm, *args, **kwargs):
@@ -286,6 +288,11 @@ def build_sampler(
                           *args, **clean_kwargs)
   return sampler, spec
 
+  @abc.abstractmethod
+  def _augment_data(self, *args, **kwargs):
+    """Adds Hint ReLIC data augmentations for the specific algorithm."""
+    pass
+
 
 class SortingSampler(Sampler):
   """Sorting sampler. Generates a random sequence of U[0, 1]."""
@@ -298,6 +305,15 @@ class SortingSampler(Sampler):
   ):
     arr = self._random_sequence(length=length, low=low, high=high)
     return [arr]
+
+  def _augment_data(self, array):
+    # Generate new elements
+    num_new_elements = ...  # Choose number of new elements 
+    new_elements = self._random_sequence(num_new_elements, low=..., high=...) 
+
+    # Concatenate to the original array 
+    array = np.concatenate([array, new_elements])
+    return array
 
 
 class SearchSampler(Sampler):
@@ -313,6 +329,17 @@ class SearchSampler(Sampler):
     arr.sort()
     x = self._rng.uniform(low=low, high=high)
     return [x, arr]
+
+  def _augment_data(self, target, array): 
+    # Generate new elements different from the target
+    num_new_elements = ...  # Choose number of new elements
+    new_elements = self._rng.choice(
+        np.delete(np.arange(int(1e4)), target * int(1e4)), 
+        size=num_new_elements) / int(1e4) 
+
+    # Concatenate to the original array
+    array = np.concatenate([array, new_elements])
+    return [target, array]
 
 
 class MaxSubarraySampler(Sampler):
@@ -345,6 +372,13 @@ class LCSSampler(Sampler):
     b = self._random_string(length=length_2, chars=chars)
     return [a, b]
 
+  def _augment_data(self, string1, string2):
+    # Augment one string (choose string1 or string2)
+    num_new_chars = ...  # Choose number of new characters
+    new_chars = self._random_string(num_new_chars, chars=4)
+    string1 = np.concatenate([string1, new_chars]) 
+    return [string1, string2]
+
 
 class OptimalBSTSampler(Sampler):
   """Optimal BST sampler. Samples array of probabilities, splits it into two."""
@@ -358,6 +392,17 @@ class OptimalBSTSampler(Sampler):
     arr /= np.sum(arr)
     p = arr[:length]
     q = arr[length:]
+    return [p, q]
+
+  def _augment_data(self, p, q): 
+    # Augment q
+    num_new_elements = ...  # Choose number of new elements 
+    new_elements = self._random_sequence(num_new_elements, low=0.0, high=1.0)
+    q = np.concatenate([q, new_elements])
+
+    # Renormalise to ensure sum is 1
+    p = p / (np.sum(p) + np.sum(new_elements))
+    q = q / (np.sum(p) + np.sum(new_elements)) 
     return [p, q]
 
 
@@ -591,6 +636,13 @@ class MatcherSampler(Sampler):
     embed_pos = self._rng.choice(length_haystack - length_needle)
     haystack[embed_pos:embed_pos + length_needle] = needle
     return [haystack, needle]
+  
+  def _augment_data(self, haystack, needle): 
+    # Augment haystack 
+    num_new_chars = ...  # Choose number of new characters
+    new_chars = self._random_string(num_new_chars, chars=4)
+    haystack = np.concatenate([haystack, new_chars]) 
+    return [haystack, needle]
 
 
 class SegmentsSampler(Sampler):
@@ -636,15 +688,21 @@ class ConvexHullSampler(Sampler):
 
     return [xs, ys]
   
-class KaratsubaSampler(Sampler):
-    """Sampler for Karatsuba multiplication."""
+  def _augment_data(self, xs, ys):
+    # Add more points 
+    num_new_points = ...
+    thetas = self._random_sequence(length=num_new_points, low=0.0, high=2.0 * np.pi)
+    rs = self.radius * np.sqrt(
+        self._random_sequence(length=num_new_points, low=0.0, high=1.0))
 
-    def _sample_data(self, length: int, low: int = 0, high: int = 9): 
-      n1 = length // 2
-      n2 = length - n1
-      x = self._random_string(length=n1, chars=high - low + 1) + low 
-      y = self._random_string(length=n2, chars=high - low + 1) + low
-      return [x, y]
+    new_xs = rs * np.cos(thetas) + self.origin_x
+    new_ys = rs * np.sin(thetas) + self.origin_y
+
+    xs = np.concatenate([xs, new_xs])
+    ys = np.concatenate([ys, new_ys])
+
+    return [xs, ys]
+
 
 
 SAMPLERS = {
@@ -680,7 +738,6 @@ SAMPLERS = {
     'segments_intersect': SegmentsSampler,
     'graham_scan': ConvexHullSampler,
     'jarvis_march': ConvexHullSampler,
-    'karatsuba': KaratsubaSampler,
 }
 
 

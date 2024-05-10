@@ -38,6 +38,22 @@ import numpy as np
 _Array = np.ndarray
 _Out = Tuple[_Array, probing.ProbesDict]
 
+def augment_data(A:, _Array):
+  """
+  Construct general augmented inputs by simply adding items at the end of each 
+  input array.
+
+  """
+  # Generate new elements
+  num_new_elements = ...  # Choose number of new elements
+  low = ... # Should this be the min of elements already in array?
+  high = ...
+  new_elements = np.random.uniform(low=low, high=high, size=num_new_elements)
+
+  # Concatenate to the original array
+  augmented_array = np.concatenate([array, new_elements])
+  return augmented_array
+
 
 def insertion_sort(A: _Array) -> _Out:
   """Insertion sort."""
