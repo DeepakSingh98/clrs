@@ -358,11 +358,11 @@ class Net(hk.Module):
           dec[name] = decoders.construct_decoders(
               loc, t, hidden_dim=self.hidden_dim,
               nb_dims=self.nb_dims[algo_idx][name],
-              name=f'algo_{algo_idx}_{name}')                       )
+              name=f'algo_{algo_idx}_{name}')
 
         # Hint reversal
         if regularisation_config.use_hint_reversal:
-          if stage == _Stage.HINT and t == _Type.POINTER and self.encode_hints):
+          if stage == _Stage.HINT and t == _Type.POINTER and self.encode_hints:
             name += '_reversed'
             loc = _Location.EDGE
             # Build input encoders.

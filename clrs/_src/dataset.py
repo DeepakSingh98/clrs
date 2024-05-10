@@ -172,9 +172,6 @@ def _preprocess(data_point, algorithm=None):
       outputs.append(dp)
     else:
       hints.append(dp)
-  
-  reversed_hints = regularisation_config.reverse_pointers(hints)
-  hints.extend(reversed_hints)
 
   return samplers.Feedback(
       samplers.Features(tuple(inputs), tuple(hints), lengths), tuple(outputs))
