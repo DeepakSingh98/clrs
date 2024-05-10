@@ -209,37 +209,37 @@ def _is_not_done_broadcast(lengths, i, tensor):
   return is_not_done
 
 
-class HintReLIC(hk.Module):
-    def __init__(self, net, mlp_out_dim=64, mlp_hidden=512):
-        super(ReLIC, self).__init__()
-        self.net = net
-        self.projector = hk.Sequential([
-            hk.Linear(mlp_hidden), jax.nn.relu,
-            hk.Linear(mlp_out_dim)]) 
+# class HintReLIC(hk.Module):
+#     def __init__(self, net, mlp_out_dim=64, mlp_hidden=512):
+#         super(ReLIC, self).__init__()
+#         self.net = net
+#         self.projector = hk.Sequential([
+#             hk.Linear(mlp_hidden), jax.nn.relu,
+#             hk.Linear(mlp_out_dim)]) 
 
-    def __call__(self, features):
-        hiddens, _ = self.net([features], repred=False, algorithm_index=0,
-                              return_hints=False, return_all_outputs=False)
-        return self.projector(hiddens[0])
+#     def __call__(self, features):
+#         hiddens, _ = self.net([features], repred=False, algorithm_index=0,
+#                               return_hints=False, return_all_outputs=False)
+#         return self.projector(hiddens[0])
 
-def relic_loss(x, x_prime, tau, b, alpha, max_tau=5.0):
-    """ReLIC loss in JAX."""
-    n = x.shape[0] 
-    x = x / jnp.linalg.norm(x, axis=-1, keepdims=True)
-    x_prime = x_prime / jnp.linalg.norm(x_prime, axis=-1, keepdims=True)
-    logits = jnp.dot(x, jnp.transpose(x_prime)) * jnp.exp(tau).clip(0, max_tau) + b
+# def relic_loss(x, x_prime, tau, b, alpha, max_tau=5.0):
+#     """ReLIC loss in JAX."""
+#     n = x.shape[0] 
+#     x = x / jnp.linalg.norm(x, axis=-1, keepdims=True)
+#     x_prime = x_prime / jnp.linalg.norm(x_prime, axis=-1, keepdims=True)
+#     logits = jnp.dot(x, jnp.transpose(x_prime)) * jnp.exp(tau).clip(0, max_tau) + b
 
-    labels = jnp.arange(n) 
-    loss = -jnp.sum(jax.nn.log_softmax(logits) * hk.one_hot(labels, n)) / n 
+#     labels = jnp.arange(n) 
+#     loss = -jnp.sum(jax.nn.log_softmax(logits) * hk.one_hot(labels, n)) / n 
 
-    # KL divergence loss 
-    p1 = jax.nn.log_softmax(logits, axis=1)
-    p2 = jax.nn.softmax(logits, axis=0).T 
-    invariance_loss = jnp.sum(p1 * (jnp.log(p1) - jnp.log(p2))) / n 
+#     # KL divergence loss 
+#     p1 = jax.nn.log_softmax(logits, axis=1)
+#     p2 = jax.nn.softmax(logits, axis=0).T 
+#     invariance_loss = jnp.sum(p1 * (jnp.log(p1) - jnp.log(p2))) / n 
 
-    loss = loss + alpha * invariance_loss 
-    return loss 
+#     loss = loss + alpha * invariance_loss 
+#     return loss 
 
-def hint_relic_loss(features, projections, tau, b, alpha):
-    loss = relic_loss(projections, projections, tau, b, alpha)
-    return loss
+# def hint_relic_loss(features, projections, tau, b, alpha):
+#     loss = relic_loss(projections, projections, tau, b, alpha)
+#     return loss

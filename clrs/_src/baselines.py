@@ -251,8 +251,8 @@ class BaselineModel(model.Model):
     self._device_opt_state = None
     self.opt_state_skeleton = None
 
-    if regularisation_config.use_hint_relic:
-      self.hint_relic = losses.Hint
+    # if regularisation_config.use_hint_relic:
+    #   self.hint_relic = losses.Hint
 
   def _create_net_fns(self, hidden_dim, encode_hints, processor_factory,
                       use_lstm, encoder_init, dropout_prob,
@@ -436,12 +436,12 @@ class BaselineModel(model.Model):
             nb_nodes=nb_nodes,
         )
     
-    if regularisation_config.use_hint_relic:
-      features = feedback.features
-      projections = self.relic(features)
-      relic_loss = losses.hint_relic_loss(features, projections, self.relic.tau,
-                                        self.relic.b, alpha=1.0)
-      total_loss += relic_loss 
+    # if regularisation_config.use_hint_relic:
+    #   features = feedback.features
+    #   projections = self.relic(features)
+    #   relic_loss = losses.hint_relic_loss(features, projections, self.relic.tau,
+    #                                     self.relic.b, alpha=1.0)
+    #   total_loss += relic_loss 
 
     return total_loss
 
