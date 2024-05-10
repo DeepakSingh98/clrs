@@ -110,10 +110,6 @@ class Sampler(abc.ABC):
           if dp.data.shape[0] > self.max_steps:
             self.max_steps = dp.data.shape[0]
 
-      if regularisation_config.use_hint_reversal:
-        reversed_hints = regularisation_config.reverse_pointers(hint)
-        hint.extend(reversed_hints)
-
     else:
       logging.info('Creating a dataset with %i samples.', num_samples)
       (self._inputs, self._outputs, self._hints,
@@ -182,6 +178,10 @@ class Sampler(abc.ABC):
       hints = self._hints
       lengths = self._lengths
       outputs = self._outputs
+
+    if regularisation_config.use_hint_reversal:
+      reversed_hints = regularisation_config.reverse_pointers(hints)
+      hints.extend(reversed_hints)
 
     return Feedback(Features(inputs, hints, lengths), outputs)
 
