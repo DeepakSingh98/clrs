@@ -38,7 +38,7 @@ import numpy as np
 _Array = np.ndarray
 _Out = Tuple[_Array, probing.ProbesDict]
 
-def augment_data(A:, _Array):
+def augment_data(A: _Array):
   """
   Construct general augmented inputs by simply adding items at the end of each 
   input array.

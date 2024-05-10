@@ -119,7 +119,7 @@ class Sampler(abc.ABC):
       reversed_hints = regularisation_config.reverse_pointers(self._hints)
       self._hints.extend(reversed_hints)
     
-    if regularisation_config.use_data_aug:
+    if regularisation_config.use_causal_augmentation:
       pass
 
   def _make_batch(self, num_samples: int, spec: specs.Spec, min_length: int,
