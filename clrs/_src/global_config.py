@@ -69,22 +69,4 @@ class RegularisationConfig:
 
         return reversed_hints
 
-        # hints = feedback.features.hints
-        # reversed_hints = []
-        # for dp in hints:
-        #     if dp.type_ == 'pointer':
-        #         data = dp.data
-        #         if dp.location == 'node':
-        #             nb_nodes = dp.data.shape[-1]
-        #             data = hk.one_hot(data, nb_nodes)
-        #         reversed_data = jnp.matrix_transpose(data)
-        #         reversed_dp = probing.DataPoint(
-        #             name=dp.name + '_reversed',
-        #             location='edge',
-        #             type_='pointer',
-        #             data=reversed_data
-        #         )
-        #         reversed_hints.append(reversed_dp)
-        # return reversed_hints
-
 regularisation_config = RegularisationConfig()
