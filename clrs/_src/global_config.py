@@ -62,7 +62,7 @@ class RegularisationConfig:
                 type_='pointer',
                 data=jnp.matrix_transpose(
                     hk.one_hot(dp.data, dp.data.shape[-1]) if dp.location == 'node' else dp.data
-                )
+                ) # interesting behaviour with zeros, worth investigating
             )
             for dp in hints if dp.type_ == 'pointer'
         ]
