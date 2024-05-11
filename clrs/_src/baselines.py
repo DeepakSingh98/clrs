@@ -427,7 +427,7 @@ class BaselineModel(model.Model):
       )
 
     # Optionally accumulate hint losses.
-    if self.decode_hints and self.ssl_reg:
+    if self.decode_hints:
       for truth in feedback.features.hints:
         total_loss += losses.hint_loss(
             truth=truth,
