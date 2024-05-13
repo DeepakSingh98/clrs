@@ -29,6 +29,9 @@ from clrs._src import specs
 import jax
 import numpy as np
 
+import jax.numpy as jnp
+import haiku as hk
+
 from clrs._src.global_config import regularisation_config
 
 _Array = np.ndarray
@@ -180,16 +183,12 @@ class Sampler(abc.ABC):
       lengths = self._lengths
       outputs = self._outputs
 
-    if regularisation_config.use_hint_reversal:
-      reversed_hints = regularisation_config.reverse_pointers(hints)
-      hints.extend(reversed_hints)
+    # if regularisation_config.use_hint_reversal:
+    #   reversed_hints = regularisation_config.reverse_pointers(hints)
+    #   hints.extend(reversed_hints)
     
-    # if regularisation_config.use_causal_augmentation:
-    #   sampled_steps = [self._rng.randint(1, length) for length in lengths]
-    #   aug_inputs = self._augment_data(inputs)
-    # else:
     aug_inputs = []
-    sampled_steps = [self._rng.randint(1, length) for length in lengths]
+    sampled_steps = [self._rng.randint(0, length) for length in lengths]
 
     return Feedback(Features(inputs, hints, lengths, aug_inputs, sampled_steps), outputs)
 
@@ -973,19 +972,50 @@ def process_random_pos(sample_iterator, rng):
 
   return _iterate()
 
+
+def reverse_pointers(sample_iterator):
+
+  def _iterate():
+    while True:
+      feedback = next(sample_iterator)
+      hints = feedback.features.hints
+      reversed_hints = [
+        probing.DataPoint(
+          name=dp.name + '_reversed',
+          location='edge',
+          type_='pointer',
+          data=jnp.matrix_transpose(
+              hk.one_hot(dp.data, dp.data.shape[-1]) if dp.location == 'node' else dp.data
+          ) # interesting behaviour with zeros, worth investigating
+        )
+        for dp in hints if dp.type_ == 'pointer'
+      ]
+      reversed_hints = tuple(reversed_hints)
+      features = feedback.features._replace(hints=tuple(hints + reversed_hints))
+      feedback = feedback._replace(features=features)
+      yield feedback
+
+  return _iterate()
+
+
 def augment_data(sample_iterator, algorithm, split):
 
-  SORTING_ALGOS = [
-      'insertion_sort',
-      'bubble_sort',
-      'heapsort',
-      'quicksort',
-  ]
-
-  if algorithm in SORTING_ALGOS:
-    return _augment_sorting_data(sample_iterator)
+  if split != 'train':
+    return sample_iterator
+  
   else:
-    raise NotImplementedError('Data augmentation not supported for this algo.')
+
+    SORTING_ALGOS = [
+        'insertion_sort',
+        'bubble_sort',
+        'heapsort',
+        'quicksort',
+    ]
+
+    if algorithm in SORTING_ALGOS:
+      return _augment_sorting_data(sample_iterator)
+    else:
+      raise NotImplementedError('Data augmentation not supported for this algo.')
 
 def _augment_sorting_data(sample_iterator):
 

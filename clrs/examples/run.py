@@ -266,6 +266,9 @@ def make_sampler(length: int,
   if chunked:
     sampler = clrs.chunkify(sampler, chunk_length)
   
+  if regularisation_config.use_hint_reversal:
+    sampler = clrs.reverse_pointers(sampler)
+  
   if regularisation_config.use_causal_augmentation:
     sampler = clrs.augment_data(sampler, algorithm, split)
 
