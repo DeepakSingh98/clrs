@@ -37,7 +37,7 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 
-# from clrs._src.latents_config import latents_config
+from clrs._src.global_config import latents_config, regularisation_config
 
 
 _Array = chex.Array
