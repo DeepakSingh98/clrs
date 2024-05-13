@@ -40,7 +40,7 @@ from clrs._src.samplers import Feedback
 from clrs._src.samplers import process_permutations
 from clrs._src.samplers import process_pred_as_input
 from clrs._src.samplers import process_random_pos
-from clrs._src.sampelrs import reverse_pointers
+from clrs._src.samplers import reverse_pointers
 from clrs._src.samplers import Sampler
 from clrs._src.samplers import Trajectory
 from clrs._src.specs import ALGO_IDX_INPUT_NAME

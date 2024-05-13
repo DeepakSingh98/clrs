@@ -41,7 +41,7 @@ Trajectories = List[Trajectory]
 
 
 Algorithm = Callable[..., Any]
-Features = collections.namedtuple('Features', ['inputs', 'hints', 'lengths', 'aug_inputs', 'sampled_steps'])
+Features = collections.namedtuple('Features', ['inputs', 'hints', 'lengths', 'aug_inputs', 'aug_hints', 'sampled_steps'])
 FeaturesChunked = collections.namedtuple(
     'Features', ['inputs', 'hints', 'is_first', 'is_last'])
 Feedback = collections.namedtuple('Feedback', ['features', 'outputs'])
@@ -183,9 +183,10 @@ class Sampler(abc.ABC):
       outputs = self._outputs
     
     aug_inputs = []
+    aug_hints = []
     sampled_steps = [self._rng.randint(0, length) for length in lengths]
 
-    return Feedback(Features(inputs, hints, lengths, aug_inputs, sampled_steps), outputs)
+    return Feedback(Features(inputs, hints, lengths, aug_inputs, aug_hints, sampled_steps), outputs)
 
   @abc.abstractmethod
   def _sample_data(self, length: int, *args, **kwargs) -> List[_Array]:
@@ -943,7 +944,8 @@ def _augment_sorting_data(sample_iterator):
       features = feedback.features
       lengths = features.lengths
       aug_inputs = _augment_data(features.inputs)
-      features = features._replace(aug_inputs=aug_inputs)
+      aug_hints = _augment_data(features.hints)
+      features = features._replace(aug_inputs=aug_inputs, aug_hints=aug_hints)
       feedback = feedback._replace(features=features)
       yield feedback
 

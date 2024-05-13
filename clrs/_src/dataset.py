@@ -156,6 +156,7 @@ def _preprocess(data_point, algorithm=None):
   lengths = None
 
   aug_inputs = []
+  aug_hints = []
   sampled_steps = []
 
   for name, data in data_point.items():
@@ -177,7 +178,7 @@ def _preprocess(data_point, algorithm=None):
       hints.append(dp)
 
   return samplers.Feedback(
-      samplers.Features(tuple(inputs), tuple(hints), lengths, aug_inputs, sampled_steps), tuple(outputs))
+      samplers.Features(tuple(inputs), tuple(hints), lengths, aug_inputs, aug_hints, sampled_steps), tuple(outputs))
 
 
 def create_dataset(folder, algorithm, split, batch_size):

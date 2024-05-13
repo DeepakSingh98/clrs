@@ -245,6 +245,8 @@ class BaselineModel(model.Model):
         nb_dims[hint.name] = hint.data.shape[-1]
       for outp in traj.outputs:
         nb_dims[outp.name] = outp.data.shape[-1]
+      for aug_inp in traj.features.aug_inputs:
+        nb_dims[aug_inp.name] = aug_inp.data.shape[-1]
       self.nb_dims.append(nb_dims)
 
     self._create_net_fns(hidden_dim, encode_hints, processor_factory, use_lstm,
@@ -433,10 +435,10 @@ class BaselineModel(model.Model):
     if self.decode_hints:
 
       if regularisation_config.use_hint_relic:
-        aug_features = feedback.features._replace(inputs=feedback.features.aug_inputs)
+        aug_features = feedback.features._replace(inputs=feedback.features.aug_inputs, hints=feedback.features.aug_hints)
         # Get the hint preds based on the augmented graph
         _, aug_hint_preds, _ = self.net_fn.apply(
-        params, rng_key, aug_features,
+        params, rng_key, [aug_features],
         repred=False,
         algorithm_index=algorithm_index,
         return_hints=True,
@@ -455,7 +457,7 @@ class BaselineModel(model.Model):
           )
 
       else:
-        
+
         for truth in feedback.features.hints:
           total_loss += losses.hint_loss(
               truth=truth,
