@@ -267,8 +267,8 @@ def make_sampler(length: int,
     sampler = clrs.chunkify(sampler, chunk_length)
   
   if regularisation_config.use_causal_augmentation:
-    sampler = clrs.augment_data(sampler)
-    
+    sampler = clrs.augment_data(sampler, algorithm, split)
+
   return sampler, num_samples, spec
 
 

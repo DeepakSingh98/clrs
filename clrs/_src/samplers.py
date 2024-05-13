@@ -188,8 +188,8 @@ class Sampler(abc.ABC):
     #   sampled_steps = [self._rng.randint(1, length) for length in lengths]
     #   aug_inputs = self._augment_data(inputs)
     # else:
-    aug_inputs = None
-    sampled_steps =  None
+    aug_inputs = []
+    sampled_steps = [self._rng.randint(1, length) for length in lengths]
 
     return Feedback(Features(inputs, hints, lengths, aug_inputs, sampled_steps), outputs)
 
@@ -973,7 +973,7 @@ def process_random_pos(sample_iterator, rng):
 
   return _iterate()
 
-def augment_data(sampler, algorithm):
+def augment_data(sample_iterator, algorithm, split):
 
   SORTING_ALGOS = [
       'insertion_sort',
@@ -983,20 +983,19 @@ def augment_data(sampler, algorithm):
   ]
 
   if algorithm in SORTING_ALGOS:
-    return _augment_sorting_data(sampler)
+    return _augment_sorting_data(sample_iterator)
   else:
     raise NotImplementedError('Data augmentation not supported for this algo.')
 
-def _augment_sorting_data(sampler):
+def _augment_sorting_data(sample_iterator):
 
   def _iterate():
     while True:
-      feedback = next(sampler)
+      feedback = next(sample_iterator)
       features = feedback.features
       lengths = features.lengths
-      sampled_steps = [self._rng.randint(1, length) for length in lengths]
       aug_inputs = _augment_data(features.inputs)
-      features = features._replace(aug_inputs=aug_inputs, sampled_steps=sampled_steps)
+      features = features._replace(aug_inputs=aug_inputs)
       feedback = feedback._replace(features=features)
       yield feedback
 
