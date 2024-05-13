@@ -208,7 +208,10 @@ def _is_not_done_broadcast(lengths, i, tensor):
     is_not_done = jnp.expand_dims(is_not_done, -1)
   return is_not_done
 
-
+@hk.transform
+def hint_relic_fn(hidden_dim, algorithms):
+    return HintReLIC(hidden_dim, algorithms)
+    
 class HintReLIC(hk.Module):
     def __init__(self, hidden_dim, algorithms):
       super(ReLIC, self).__init__()
