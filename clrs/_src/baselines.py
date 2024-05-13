@@ -257,8 +257,20 @@ class BaselineModel(model.Model):
     self.opt_state_skeleton = None
 
     if regularisation_config.use_hint_relic:
-      self.hint_relic_fn = losses.hint_relic_fn()
-      self.hint_relic_params = self.hint_relic_fn.init(jax.random.PRNGKey(42))
+      self.hint_relic_fn = hint_relic_fn
+      self.hint_relic_params = self.hint_relic_fn.init(
+        hidden_dim=self.hidden_dim,
+        truth=None,
+        orig_hint_preds=jnp.zeros((1, hidden_dim)),
+        aug_hint_preds=jnp.zeros((1, hidden_dim)),
+        lengths=jnp.zeros(1),
+        sampled_steps=jnp.zeros(1),
+        algorithm_index=0,
+        use_contrastive_loss=regularisation_config.use_hint_relic,
+        use_kl_loss=regularisation_config.use_kl_loss,
+    )
+      # self.hint_relic_fn = losses.hint_relic_fn()
+      # self.hint_relic_params = self.hint_relic_fn.init(jax.random.PRNGKey(42))
 
 
   def _create_net_fns(self, hidden_dim, encode_hints, processor_factory,
@@ -412,8 +424,8 @@ class BaselineModel(model.Model):
             return_hints,
             return_all_outputs))
   
-  def hint_relic_loss(self, hidden_dim, algorithms, truth, orig_hint_preds, aug_hint_preds, lengths, sampled_steps, algo_idx):
-    return self.hint_relic_fn.apply(self.hint_relic_params, rng_key, hidden_dim, algorithms, truth, orig_hint_preds, aug_hint_preds, lengths, sampled_steps, algo_idx)
+  # def hint_relic_loss(self, hidden_dim, algorithms, truth, orig_hint_preds, aug_hint_preds, lengths, sampled_steps, algo_idx):
+  #   return self.hint_relic_fn.apply(self.hint_relic_params, rng_key, hidden_dim, algorithms, truth, orig_hint_preds, aug_hint_preds, lengths, sampled_steps, algo_idx)
 
   def _loss(self, params, rng_key, feedback, algorithm_index):
     """Calculates model loss f(feedback; params)."""
@@ -450,19 +462,41 @@ class BaselineModel(model.Model):
         return_all_outputs=False)
 
         sampled_steps = feedback.features.sampled_steps
-
+        
         for truth in feedback.features.hints:
-          total_loss += self.hint_relic_loss(
-            rng_key=rng_key,
+          total_loss += self.hint_relic_fn.apply(
+            self.hint_relic_params,
             hidden_dim=self.hidden_dim,
-            algorithms=regularisation_config.algorithms,
             truth=truth,
-            orig_preds=[x[truth.name] for x in hint_preds],
-            aug_preds=[x[truth.name] for x in aug_hint_preds],
+            orig_hint_preds=[x[truth.name] for x in hint_preds],
+            aug_hint_preds=[x[truth.name] for x in aug_hint_preds],
             lengths=lengths,
             sampled_steps=sampled_steps,
-            algo_idx=algorithm_index,
+            algorithm_index=algorithm_index,
           )
+
+        # for truth in feedback.features.hints:
+        #   total_loss += self.hint_relic_loss(
+        #     params=self.hint_relic_params,
+        #     rng_key=rng_key,
+        #     hidden_dim=self.hidden_dim,
+        #     algorithms=regularisation_config.algorithms,
+        #     truth=truth,
+        #     orig_preds=[x[truth.name] for x in hint_preds],
+        #     aug_preds=[x[truth.name] for x in aug_hint_preds],
+        #     lengths=lengths,
+        #     sampled_steps=sampled_steps,
+        #     algo_idx=algorithm_index,
+        #   )
+
+          # total_loss += self.hint_relic_fn.apply(
+          #       self.hint_relic_params, 
+          #       [x[truth.name] for x in hint_preds],
+          #       [x[truth.name] for x in aug_hint_preds], 
+          #       lengths,
+          #       sampled_steps,
+          #       self.hidden_dim,
+          #   )
 
       else:
 

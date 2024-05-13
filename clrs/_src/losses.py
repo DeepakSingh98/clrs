@@ -208,59 +208,115 @@ def _is_not_done_broadcast(lengths, i, tensor):
     is_not_done = jnp.expand_dims(is_not_done, -1)
   return is_not_done
 
-@hk.transform
-def hint_relic_fn():
-    return HintReLIC()
-    
+
+class SimilarityFunction(hk.Module):
+    def __init__(self, hidden_dim, name=None):
+        super().__init__(name=name)
+        self.projector = hk.Sequential([
+            hk.Linear(hidden_dim, hidden_dim),
+            jax.nn.relu,
+            hk.Linear(hidden_dim, hidden_dim),
+        ])
+
+    def __call__(self, x, y, temp):
+        x_proj = self.projector(x)
+        y_proj = self.projector(y)
+        return jnp.sum(x_proj * y_proj, axis=-1) / temp
+
 class HintReLIC(hk.Module):
-    def __init__(self):
-      super().__init__()
-      self.projector = hk.Sequential([
-          hk.Linear(input_dim), 
-          jax.nn.relu,
-          hk.Linear(output_dim),
-          jax.nn.relu,
-          ])
+    def __init__(self, hidden_dim, temp=0.1, kl_weight=1.0, use_contrastive_loss=True, use_kl_loss=True, name=None):
+        super().__init__(name=name)
+        self.similarity_fn = SimilarityFunction(hidden_dim)
+        self.temp = temp
+        self.kl_weight = kl_weight
+        self.use_contrastive_loss = use_contrastive_loss
+        self.use_kl_loss = use_kl_loss
 
-    def __call__(self, rng_key, hidden_dim, algorithms, truth, orig_hint_preds, aug_hint_preds, lengths, sampled_steps, algo_idx):
+    def __call__(self, hidden_dim, truth, orig_hint_preds, aug_hint_preds, lengths, sampled_steps, algorithm_index):
+        # Compute the similarity scores
+        sim_scores = self.similarity_fn(orig_hint_preds, aug_hint_preds, temp=self.temp)
 
-      orig_hint_preds = self.select_hints(orig_hint_preds, algo_idx)
-      aug_hint_preds = self.select_hints(aug_hint_preds, algo_idx)
+        loss = 0.0
 
-      f_orig = self.projector(orig_hint_preds)
-      f_aug = self.projector(aug_hint_preds)
+        if self.use_contrastive_loss:
+            # Compute the contrastive loss
+            n = sim_scores.shape[0]
+            labels = jnp.arange(n)
+            contrastive_loss = -jnp.mean(jax.nn.log_softmax(sim_scores, axis=1) * hk.one_hot(labels, n))
+            loss += contrastive_loss
 
-      # # Normalize the representations
-      # f_orig = f_orig / jnp.linalg.norm(f_orig, axis=-1, keepdims=True)
-      # f_aug = f_aug / jnp.linalg.norm(f_aug, axis=-1, keepdims=True)
+        if self.use_kl_loss:
+            # Compute the KL divergence loss
+            p_orig = jax.nn.log_softmax(sim_scores, axis=1)
+            p_aug = jax.nn.softmax(sim_scores, axis=0).T
+            kl_loss = jnp.mean(jnp.sum(p_orig * (jnp.log(p_orig) - jnp.log(p_aug)), axis=1))
+            loss += self.kl_weight * kl_loss
 
-      # Compute the similarity scores
-      sim_scores = jnp.dot(f_orig, jnp.transpose(f_aug)) / self.temp
+        # Mask out the entire Hint-ReLIC loss on steps later than the sampled step
+        mask = _is_not_done_broadcast(sampled_steps, jnp.arange(sim_scores.shape[1]), loss)
+        loss = jnp.sum(loss * mask) / jnp.maximum(jnp.sum(mask), EPS)
 
-      # Compute the contrastive loss
-      n = sim_scores.shape[0]
-      labels = jnp.arange(n)
-      contrastive_loss = -jnp.mean(jax.nn.log_softmax(sim_scores, axis=1) * hk.one_hot(labels, n))
+        return loss
 
-      # Compute the KL divergence loss
-      p_orig = jax.nn.log_softmax(sim_scores, axis=1)
-      p_aug = jax.nn.softmax(sim_scores, axis=0).T
-      kl_loss = jnp.mean(jnp.sum(p_orig * (jnp.log(p_orig) - jnp.log(p_aug)), axis=1))
+@hk.transform
+def hint_relic_fn(hidden_dim, truth, orig_hint_preds, aug_hint_preds, lengths, sampled_steps, algorithm_index, temp=0.1, kl_weight=1.0, use_contrastive_loss=True, use_kl_loss=True):
+    hint_relic = HintReLIC(hidden_dim, temp=temp, kl_weight=kl_weight, use_contrastive_loss=use_contrastive_loss, use_kl_loss=use_kl_loss)
+    return hint_relic(hidden_dim, truth, orig_hint_preds, aug_hint_preds, lengths, sampled_steps, algorithm_index)
 
-      # Combine the losses
-      loss = contrastive_loss + self.kl_weight * kl_loss
 
-      return loss
+# @hk.transform
+# def hint_relic_fn():
+#     return HintReLIC()
+    
+# class HintReLIC(hk.Module):
+#     def __init__(self):
+#       super().__init__()
+#       self.projector = hk.Sequential([
+#           hk.Linear(input_dim), 
+#           jax.nn.relu,
+#           hk.Linear(output_dim),
+#           jax.nn.relu,
+#           ])
 
-    def select_hints(self, hints, algo_idx):
+#     def __call__(self, rng_key, hidden_dim, algorithms, truth, orig_hint_preds, aug_hint_preds, lengths, sampled_steps, algo_idx):
+
+#       orig_hint_preds = self.select_hints(orig_hint_preds, algo_idx)
+#       aug_hint_preds = self.select_hints(aug_hint_preds, algo_idx)
+
+#       f_orig = self.projector(orig_hint_preds)
+#       f_aug = self.projector(aug_hint_preds)
+
+#       # # Normalize the representations
+#       # f_orig = f_orig / jnp.linalg.norm(f_orig, axis=-1, keepdims=True)
+#       # f_aug = f_aug / jnp.linalg.norm(f_aug, axis=-1, keepdims=True)
+
+#       # Compute the similarity scores
+#       sim_scores = jnp.dot(f_orig, jnp.transpose(f_aug)) / self.temp
+
+#       # Compute the contrastive loss
+#       n = sim_scores.shape[0]
+#       labels = jnp.arange(n)
+#       contrastive_loss = -jnp.mean(jax.nn.log_softmax(sim_scores, axis=1) * hk.one_hot(labels, n))
+
+#       # Compute the KL divergence loss
+#       p_orig = jax.nn.log_softmax(sim_scores, axis=1)
+#       p_aug = jax.nn.softmax(sim_scores, axis=0).T
+#       kl_loss = jnp.mean(jnp.sum(p_orig * (jnp.log(p_orig) - jnp.log(p_aug)), axis=1))
+
+#       # Combine the losses
+#       loss = contrastive_loss + self.kl_weight * kl_loss
+
+#       return loss
+
+#     def select_hints(self, hints, algo_idx):
       
-      algo = self.algorithms[algo_idx]
+#       algo = self.algorithms[algo_idx]
 
-      selection_dict = {
-        "insertion_sort": ['pred_h'],
-      }
+#       selection_dict = {
+#         "insertion_sort": ['pred_h'],
+#       }
 
-      selected_hint_keys = selection_dict.get(algo, [])
-      selected_preds = {key: value for key, value in hints.items() if key in selected_hint_keys}
+#       selected_hint_keys = selection_dict.get(algo, [])
+#       selected_preds = {key: value for key, value in hints.items() if key in selected_hint_keys}
 
-      return selected_preds
+#       return selected_preds
