@@ -208,6 +208,7 @@ def _is_not_done_broadcast(lengths, i, tensor):
     is_not_done = jnp.expand_dims(is_not_done, -1)
   return is_not_done
 
+
 class HintReLIC(hk.Module):
     def __init__(self, hidden_dim, algorithms):
       super(ReLIC, self).__init__()
@@ -231,39 +232,33 @@ class HintReLIC(hk.Module):
       # f_orig = f_orig / jnp.linalg.norm(f_orig, axis=-1, keepdims=True)
       # f_aug = f_aug / jnp.linalg.norm(f_aug, axis=-1, keepdims=True)
 
-      # # Compute the similarity scores
-      # sim_scores = jnp.dot(f_orig, jnp.transpose(f_aug)) / self.temp
+      # Compute the similarity scores
+      sim_scores = jnp.dot(f_orig, jnp.transpose(f_aug)) / self.temp
 
-      # # Compute the contrastive loss
-      # n = sim_scores.shape[0]
-      # labels = jnp.arange(n)
-      # contrastive_loss = -jnp.mean(jax.nn.log_softmax(sim_scores, axis=1) * hk.one_hot(labels, n))
+      # Compute the contrastive loss
+      n = sim_scores.shape[0]
+      labels = jnp.arange(n)
+      contrastive_loss = -jnp.mean(jax.nn.log_softmax(sim_scores, axis=1) * hk.one_hot(labels, n))
 
-      # # Compute the KL divergence loss
-      # p_orig = jax.nn.log_softmax(sim_scores, axis=1)
-      # p_aug = jax.nn.softmax(sim_scores, axis=0).T
-      # kl_loss = jnp.mean(jnp.sum(p_orig * (jnp.log(p_orig) - jnp.log(p_aug)), axis=1))
+      # Compute the KL divergence loss
+      p_orig = jax.nn.log_softmax(sim_scores, axis=1)
+      p_aug = jax.nn.softmax(sim_scores, axis=0).T
+      kl_loss = jnp.mean(jnp.sum(p_orig * (jnp.log(p_orig) - jnp.log(p_aug)), axis=1))
 
-      # # Combine the losses
-      # loss = contrastive_loss + self.kl_weight * kl_loss
+      # Combine the losses
+      loss = contrastive_loss + self.kl_weight * kl_loss
 
-      # return loss
+      return loss
 
     def select_hints(self, hints, algo_idx):
-
-      selected_preds = {}
+      
       algo = self.algorithms[algo_idx]
 
-      # DFS-based
+      selection_dict = {
+        "insertion_sort": ['pred_h'],
+      }
 
-      # Graph-based
+      selected_hint_keys = selection_dict.get(algo, [])
+      selected_preds = {key: value for key, value in hints.items() if key in selected_hint_keys}
 
-      # Sorting
-      if algo == 'insertion_sort':
-        selected_preds['pred_h'] = hint_preds['pred_h']
-
-      # Searching
-      else:
-        raise NotImplementedError("Hint-ReLIC loss not supported for this algo")
-
-      return selected_hint_preds
+      return selected_preds

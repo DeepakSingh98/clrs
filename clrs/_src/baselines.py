@@ -431,8 +431,9 @@ class BaselineModel(model.Model):
 
     # Optionally accumulate hint losses.
     if self.decode_hints:
+
       if regularisation_config.use_hint_relic:
-        aug_features = [feedback.features.aug_inputs, feedback.features.hints, feedback.features.sampled_steps]
+        aug_features = feedback.features._replace(inputs=feedback.features.aug_inputs)
         # Get the hint preds based on the augmented graph
         _, aug_hint_preds, _ = self.net_fn.apply(
         params, rng_key, aug_features,
@@ -441,7 +442,7 @@ class BaselineModel(model.Model):
         return_hints=True,
         return_all_outputs=False)
 
-        sampled_steps = feedback.aug_features.sampled_steps
+        sampled_steps = feedback.features.sampled_steps
 
         for truth in feedback.features.hints:
           total_loss += self.hint_relic_loss(
@@ -450,23 +451,18 @@ class BaselineModel(model.Model):
             aug_preds=[x[truth.name] for x in aug_hint_preds],
             lengths=lengths,
             sampled_steps=sampled_steps,
-            algo_dx=algorithm_index,
+            algo_idx=algorithm_index,
           )
 
-      for truth in feedback.features.hints:
-        total_loss += losses.hint_loss(
-            truth=truth,
-            preds=[x[truth.name] for x in hint_preds],
-            lengths=lengths,
-            nb_nodes=nb_nodes,
-        )
-    
-    # if regularisation_config.use_hint_relic:
-    #   features = feedback.features
-    #   projections = self.relic(features)
-    #   relic_loss = losses.hint_relic_loss(features, projections, self.relic.tau,
-    #                                     self.relic.b, alpha=1.0)
-    #   total_loss += relic_loss 
+      else:
+        
+        for truth in feedback.features.hints:
+          total_loss += losses.hint_loss(
+              truth=truth,
+              preds=[x[truth.name] for x in hint_preds],
+              lengths=lengths,
+              nb_nodes=nb_nodes,
+          )
 
     return total_loss
 

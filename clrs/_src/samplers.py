@@ -42,7 +42,6 @@ Trajectories = List[Trajectory]
 
 Algorithm = Callable[..., Any]
 Features = collections.namedtuple('Features', ['inputs', 'hints', 'lengths', 'aug_inputs', 'sampled_steps'])
-# Aug_Features = collections.namedtuple('Aug_Features', ['aug_inputs', 'hints', 'sampled_steps'])
 FeaturesChunked = collections.namedtuple(
     'Features', ['inputs', 'hints', 'is_first', 'is_last'])
 Feedback = collections.namedtuple('Feedback', ['features', 'outputs'])
@@ -290,11 +289,6 @@ def build_sampler(
                           *args, **clean_kwargs)
   return sampler, spec
 
-  @abc.abstractmethod
-  def _augment_data(self, inputs):
-    """Adds Hint ReLIC data augmentations for the specific algorithm."""
-    pass
-
 
 class SortingSampler(Sampler):
   """Sorting sampler. Generates a random sequence of U[0, 1]."""
@@ -307,26 +301,6 @@ class SortingSampler(Sampler):
   ):
     arr = self._random_sequence(length=length, low=low, high=high)
     return [arr]
-
-  def _augment_data(self, inputs):
-    """
-    Construct general augmented inputs by simply adding items at the end of each 
-    input array.
-
-    """
-    max_length = CLRS30['train']['length'] + 1
-    max_num_aug_items = max_length - inputs[0].data.shape[1]
-    aug_items = [self._rng.uniform(low=np.min(arr.data), high=np.max(arr.data), size=num_aug_items) for arr in inputs]
-    aug_inputs = [
-      probing.DataPoint(
-          name=dp.name,
-          location=dp.location,
-          type_=dp.type_,
-          data=np.concatenate((dp.data[-1], aug_data), axis=-1)
-      )
-      for dp, aug_data in zip(inputs, aug_items)
-    ]
-    return aug_inputs
 
 
 class SearchSampler(Sampler):
@@ -342,17 +316,6 @@ class SearchSampler(Sampler):
     arr.sort()
     x = self._rng.uniform(low=low, high=high)
     return [x, arr]
-
-  def _augment_data(self, target, array): 
-    # Generate new elements different from the target
-    num_new_elements = ...  # Choose number of new elements
-    new_elements = self._rng.choice(
-        np.delete(np.arange(int(1e4)), target * int(1e4)), 
-        size=num_new_elements) / int(1e4) 
-
-    # Concatenate to the original array
-    array = np.concatenate([array, new_elements])
-    return [target, array]
 
 
 class MaxSubarraySampler(Sampler):
@@ -385,13 +348,6 @@ class LCSSampler(Sampler):
     b = self._random_string(length=length_2, chars=chars)
     return [a, b]
 
-  def _augment_data(self, string1, string2):
-    # Augment one string (choose string1 or string2)
-    num_new_chars = ...  # Choose number of new characters
-    new_chars = self._random_string(num_new_chars, chars=4)
-    string1 = np.concatenate([string1, new_chars]) 
-    return [string1, string2]
-
 
 class OptimalBSTSampler(Sampler):
   """Optimal BST sampler. Samples array of probabilities, splits it into two."""
@@ -405,17 +361,6 @@ class OptimalBSTSampler(Sampler):
     arr /= np.sum(arr)
     p = arr[:length]
     q = arr[length:]
-    return [p, q]
-
-  def _augment_data(self, p, q): 
-    # Augment q
-    num_new_elements = ...  # Choose number of new elements 
-    new_elements = self._random_sequence(num_new_elements, low=0.0, high=1.0)
-    q = np.concatenate([q, new_elements])
-
-    # Renormalise to ensure sum is 1
-    p = p / (np.sum(p) + np.sum(new_elements))
-    q = q / (np.sum(p) + np.sum(new_elements)) 
     return [p, q]
 
 
@@ -649,13 +594,6 @@ class MatcherSampler(Sampler):
     embed_pos = self._rng.choice(length_haystack - length_needle)
     haystack[embed_pos:embed_pos + length_needle] = needle
     return [haystack, needle]
-  
-  def _augment_data(self, haystack, needle): 
-    # Augment haystack 
-    num_new_chars = ...  # Choose number of new characters
-    new_chars = self._random_string(num_new_chars, chars=4)
-    haystack = np.concatenate([haystack, new_chars]) 
-    return [haystack, needle]
 
 
 class SegmentsSampler(Sampler):
@@ -700,22 +638,6 @@ class ConvexHullSampler(Sampler):
     ys = rs * np.sin(thetas) + origin_y
 
     return [xs, ys]
-  
-  def _augment_data(self, xs, ys):
-    # Add more points 
-    num_new_points = ...
-    thetas = self._random_sequence(length=num_new_points, low=0.0, high=2.0 * np.pi)
-    rs = self.radius * np.sqrt(
-        self._random_sequence(length=num_new_points, low=0.0, high=1.0))
-
-    new_xs = rs * np.cos(thetas) + self.origin_x
-    new_ys = rs * np.sin(thetas) + self.origin_y
-
-    xs = np.concatenate([xs, new_xs])
-    ys = np.concatenate([ys, new_ys])
-
-    return [xs, ys]
-
 
 
 SAMPLERS = {
