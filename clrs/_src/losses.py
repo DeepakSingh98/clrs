@@ -229,28 +229,28 @@ class SimilarityFunction(hk.Module):
 
     return jnp.sum(x_proj * y_proj, axis=-1) / temp
   
-  def _select_hints(self, aug_hint_preds, algo_idx):
-    algo = algorithms[algo_idx]
-    selection_dict = {
-        "insertion_sort": ['pred_h'],
-    }
-    selected_hint_keys = selection_dict.get(algo, [])
+  # def _select_hints(self, aug_hint_preds, algo_idx):
+  #   algo = algorithms[algo_idx]
+  #   selection_dict = {
+  #       "insertion_sort": ['pred_h'],
+  #   }
+  #   selected_hint_keys = selection_dict.get(algo, [])
 
-    # Invert the list of dictionaries first
-    inverted_aug_hint_preds = invert(aug_hint_preds)
+  #   # Invert the list of dictionaries first
+  #   inverted_aug_hint_preds = invert(aug_hint_preds)
 
-    # Select the desired keys from the inverted list of dictionaries
-    processed_hint_preds = [
-        {key: step_dict[key] for key in selected_hint_keys}
-        for step_dict in inverted_aug_hint_preds
-    ]
+  #   # Select the desired keys from the inverted list of dictionaries
+  #   processed_hint_preds = [
+  #       {key: step_dict[key] for key in selected_hint_keys}
+  #       for step_dict in inverted_aug_hint_preds
+  #   ]
 
-    def invert(d):
-      """Dict of lists -> list of dicts."""
-      if d:
-        return [dict(zip(d, i)) for i in zip(*d.values())]
+  #   def invert(d):
+  #     """Dict of lists -> list of dicts."""
+  #     if d:
+  #       return [dict(zip(d, i)) for i in zip(*d.values())]
 
-    return processed_hint_preds
+  #   return processed_hint_preds
     
 
 @hk.transform

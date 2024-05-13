@@ -463,21 +463,20 @@ class BaselineModel(model.Model):
 
         sampled_steps = feedback.features.sampled_steps
 
-        hint_preds = _select_hints
-        aug_hint_preds = _select_hints
+        hint_preds = regularisation_config._select_hints(hint_preds)
+        aug_hint_preds = regularisation_config._select_hints(aug_hint_preds)
         
-        for truth in feedback.features.hints:
-          if truth in algorithms[algo_idx]
-          total_loss += self.hint_relic_fn.apply(
-            self.hint_relic_params,
-            hidden_dim=self.hidden_dim,
-            truth=truth,
-            orig_hint_preds=[x[truth.name] for x in hint_preds],
-            aug_hint_preds=[x[truth.name] for x in aug_hint_preds],
-            lengths=lengths,
-            sampled_steps=sampled_steps,
-            algorithm_index=algorithm_index,
-          )
+        # for truth in feedback.features.hints:
+        #   total_loss += self.hint_relic_fn.apply(
+        #     self.hint_relic_params,
+        #     hidden_dim=self.hidden_dim,
+        #     truth=truth,
+        #     orig_hint_preds=[x[truth.name] for x in hint_preds],
+        #     aug_hint_preds=[x[truth.name] for x in aug_hint_preds],
+        #     lengths=lengths,
+        #     sampled_steps=sampled_steps,
+        #     algorithm_index=algorithm_index,
+        #   )
 
         # for truth in feedback.features.hints:
         #   total_loss += self.hint_relic_loss(
