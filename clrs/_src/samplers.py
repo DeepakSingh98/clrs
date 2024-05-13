@@ -945,7 +945,6 @@ def _augment_sorting_data(sample_iterator):
       lengths = features.lengths
       aug_inputs = _augment_data(features.inputs)
       aug_hints = _pad_hints(features.hints)
-      aug_hints = _augment_data(features.hints)
       features = features._replace(aug_inputs=aug_inputs, aug_hints=aug_hints)
       feedback = feedback._replace(features=features)
       yield feedback
@@ -999,5 +998,6 @@ def _augment_sorting_data(sample_iterator):
         data=padded_data,
       ))
     padded_hints = tuple(padded_hints)
+    return padded_hints
 
   return _iterate()

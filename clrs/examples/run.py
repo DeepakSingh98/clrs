@@ -443,6 +443,7 @@ def main(unused_argv):
   regularisation_config.use_causal_augmentation = FLAGS.use_causal_augmentation
   regularisation_config.use_hint_relic = FLAGS.use_hint_relic
   regularisation_config.use_kl_loss = FLAGS.use_kl_loss
+  regularisation_config.algorithms = FLAGS.Algorithms
 
   if FLAGS.hint_mode == 'encoded_decoded':
     encode_hints = True

@@ -53,5 +53,6 @@ class RegularisationConfig:
         self.use_causal_augmentation = False
         self.use_hint_relic = False
         self.use_kl_loss = False
+        self.algorithms = None
 
 regularisation_config = RegularisationConfig()
