@@ -136,6 +136,12 @@ flags.DEFINE_boolean('use_shared_latent_space', False,
 
 flags.DEFINE_boolean('use_hint_reversal', False,
                       'Whether to use hint reversal for regularization.')
+flags.DEFINE_boolean('use_causal_augmentation', False,
+                      'Whether to use causal augmentation.')
+flags.DEFINE_boolean('use_hint_relic', False,
+                      'Whether to use the hint-ReLIC loss.')   
+flags.DEFINE_boolean('use_kl_loss', False,
+                      'Whether to use the KL divergence loss.')                                        
 
 flags.DEFINE_integer('nb_hgp_levels', 1,
                       'Number of levels in the hierarchical graph processor.')
@@ -427,6 +433,9 @@ def main(unused_argv):
 
   latents_config.use_shared_latent_space = FLAGS.use_shared_latent_space
   regularisation_config.use_hint_reversal = FLAGS.use_hint_reversal
+  regularisation_config.use_causal_augmentation = FLAGS.use_causal_augmentation
+  regularisation_config.use_hint_relic = FLAGS.use_hint_relic
+  regularisation_config.use_kl_loss = FLAGS.use_kl_loss
 
   if FLAGS.hint_mode == 'encoded_decoded':
     encode_hints = True

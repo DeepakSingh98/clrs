@@ -327,7 +327,7 @@ class SortingSampler(Sampler):
           name=dp.name,
           location=dp.location,
           type_=dp.type_,
-          data=np.concatenate(dp.data, aug_data, axis=-1)
+          data=np.concatenate((dp.data[-1], aug_data), axis=-1)
       )
       for dp, aug_data in zip(inputs, aug_items)
     ]

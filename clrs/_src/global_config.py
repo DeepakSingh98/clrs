@@ -52,6 +52,7 @@ class RegularisationConfig:
         self.use_hint_reversal = False
         self.use_causal_augmentation = False
         self.use_hint_relic = False
+        self.use_kl_loss = False
 
     def reverse_pointers(self, hints):
 
