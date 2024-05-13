@@ -944,13 +944,13 @@ def _augment_sorting_data(sample_iterator):
       features = feedback.features
       lengths = features.lengths
       aug_inputs = _augment_data(features.inputs)
+      aug_hints = _pad_hints(features.hints)
       aug_hints = _augment_data(features.hints)
       features = features._replace(aug_inputs=aug_inputs, aug_hints=aug_hints)
       feedback = feedback._replace(features=features)
       yield feedback
 
   def _augment_data(inputs):
-
     max_length = CLRS30['train']['length'] + 1
     batch_size = inputs[0].data.shape[0]
     num_inputs = len(inputs)
@@ -985,5 +985,19 @@ def _augment_sorting_data(sample_iterator):
     )
 
     return aug_inputs
+
+  def _pad_hints(hints):
+    padded_hints = []
+    max_length = CLRS30['train']['length'] + 1
+    for hint in hints:
+      pad_length = max_length - hint.data.shape[-1]
+      padded_data = jnp.pad(hint.data, ((0, 0), (0, 0), (0, pad_length)))
+      padded_hints.append(probing.DataPoint(
+        name=hint.name,
+        location=hint.location,
+        type_=hint.type_,
+        data=padded_data,
+      ))
+    padded_hints = tuple(padded_hints)
 
   return _iterate()
