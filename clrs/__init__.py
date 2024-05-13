@@ -32,6 +32,7 @@ from clrs._src.model import Model
 from clrs._src.probing import DataPoint
 from clrs._src.probing import predecessor_to_cyclic_predecessor_and_first
 from clrs._src.processors import get_processor_factory
+from clrs._src.samplers import augment_data
 from clrs._src.samplers import build_sampler
 from clrs._src.samplers import CLRS30
 from clrs._src.samplers import Features
@@ -54,6 +55,7 @@ __version__ = "1.0.0"
 
 __all__ = (
     "ALGO_IDX_INPUT_NAME",
+    "augment_data"
     "build_sampler",
     "chunkify",
     "CLRS30",
