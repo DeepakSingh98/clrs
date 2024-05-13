@@ -948,19 +948,40 @@ def _augment_sorting_data(sample_iterator):
       yield feedback
 
   def _augment_data(inputs):
+
     max_length = CLRS30['train']['length'] + 1
-    max_num_aug_items = max_length - inputs[0].data.shape[-1]
-    aug_items = [np.random.uniform(low=np.min(arr.data), high=np.max(arr.data), size=max_num_aug_items) for arr in inputs]
-    aug_items = jnp.expand_dims(aug_items, axis=0)
-    aug_inputs = [
-      probing.DataPoint(
-          name=dp.name,
-          location=dp.location,
-          type_=dp.type_,
-          data=jnp.concatenate((dp.data, aug_data), axis=1)
-      )
-      for dp, aug_data in zip(inputs, aug_items)
+    batch_size = inputs[0].data.shape[0]
+    num_inputs = len(inputs)
+
+    # Get data ranges
+    data_min = jnp.min(jnp.stack([dp.data for dp in inputs]), axis=(0, 2), keepdims=True)
+    data_max = jnp.max(jnp.stack([dp.data for dp in inputs]), axis=(0, 2), keepdims=True)
+
+    # Generate random augmentation matrices
+    aug_matrices = jax.random.uniform(
+        jax.random.PRNGKey(0),
+        shape=(num_inputs, batch_size, max_length - inputs[0].data.shape[1]),
+        minval=data_min,
+        maxval=data_max,
+    )
+
+    # Concatenate original data with augmentation matrices
+    aug_data = [
+        jnp.concatenate((dp.data, aug_matrices[i]), axis=1)
+        for i, dp in enumerate(inputs)
     ]
+
+    # Create new DataPoints with augmented data
+    aug_inputs = tuple(
+        probing.DataPoint(
+            name=dp.name,
+            location=dp.location,
+            type_=dp.type_,
+            data=aug_data[i],
+        )
+        for i, dp in enumerate(inputs)
+    )
+
     return aug_inputs
 
   return _iterate()
