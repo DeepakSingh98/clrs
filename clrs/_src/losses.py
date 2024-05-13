@@ -209,21 +209,20 @@ def _is_not_done_broadcast(lengths, i, tensor):
   return is_not_done
 
 @hk.transform
-def hint_relic_fn(hidden_dim, algorithms):
-    return HintReLIC(hidden_dim, algorithms)
+def hint_relic_fn():
+    return HintReLIC()
     
 class HintReLIC(hk.Module):
-    def __init__(self, hidden_dim, algorithms):
-      super(ReLIC, self).__init__()
+    def __init__(self):
+      super().__init__()
       self.projector = hk.Sequential([
           hk.Linear(input_dim), 
           jax.nn.relu,
           hk.Linear(output_dim),
           jax.nn.relu,
-          ]) 
-      self.algorithms = algorithms
+          ])
 
-    def __call__(self, truth, orig_hint_preds, aug_hint_preds, lengths, sampled_steps, algo_idx):
+    def __call__(self, rng_key, hidden_dim, algorithms, truth, orig_hint_preds, aug_hint_preds, lengths, sampled_steps, algo_idx):
 
       orig_hint_preds = self.select_hints(orig_hint_preds, algo_idx)
       aug_hint_preds = self.select_hints(aug_hint_preds, algo_idx)
