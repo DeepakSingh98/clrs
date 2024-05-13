@@ -158,10 +158,6 @@ def _preprocess(data_point, algorithm=None):
   for name, data in data_point.items():
     if name == 'lengths':
       lengths = data
-    elif name.startswith('aug_input_'):
-      aug_inputs = data
-    elif name.startswith('sampled_steps_'):
-      sampled_steps = data
       continue
     data_point_name = name.split('_')
     name = '_'.join(data_point_name[1:])
