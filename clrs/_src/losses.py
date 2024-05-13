@@ -208,38 +208,62 @@ def _is_not_done_broadcast(lengths, i, tensor):
     is_not_done = jnp.expand_dims(is_not_done, -1)
   return is_not_done
 
+class HintReLIC(hk.Module):
+    def __init__(self, hidden_dim, algorithms):
+      super(ReLIC, self).__init__()
+      self.projector = hk.Sequential([
+          hk.Linear(input_dim), 
+          jax.nn.relu,
+          hk.Linear(output_dim),
+          jax.nn.relu,
+          ]) 
+      self.algorithms = algorithms
 
-# class HintReLIC(hk.Module):
-#     def __init__(self, net, mlp_out_dim=64, mlp_hidden=512):
-#         super(ReLIC, self).__init__()
-#         self.net = net
-#         self.projector = hk.Sequential([
-#             hk.Linear(mlp_hidden), jax.nn.relu,
-#             hk.Linear(mlp_out_dim)]) 
+    def __call__(self, truth, orig_hint_preds, aug_hint_preds, lengths, sampled_steps, algo_idx):
 
-#     def __call__(self, features):
-#         hiddens, _ = self.net([features], repred=False, algorithm_index=0,
-#                               return_hints=False, return_all_outputs=False)
-#         return self.projector(hiddens[0])
+      orig_hint_preds = self.select_hints(orig_hint_preds, algo_idx)
+      aug_hint_preds = self.select_hints(aug_hint_preds, algo_idx)
 
-# def relic_loss(x, x_prime, tau, b, alpha, max_tau=5.0):
-#     """ReLIC loss in JAX."""
-#     n = x.shape[0] 
-#     x = x / jnp.linalg.norm(x, axis=-1, keepdims=True)
-#     x_prime = x_prime / jnp.linalg.norm(x_prime, axis=-1, keepdims=True)
-#     logits = jnp.dot(x, jnp.transpose(x_prime)) * jnp.exp(tau).clip(0, max_tau) + b
+      f_orig = self.projector(orig_hint_preds)
+      f_aug = self.projector(aug_hint_preds)
 
-#     labels = jnp.arange(n) 
-#     loss = -jnp.sum(jax.nn.log_softmax(logits) * hk.one_hot(labels, n)) / n 
+      # # Normalize the representations
+      # f_orig = f_orig / jnp.linalg.norm(f_orig, axis=-1, keepdims=True)
+      # f_aug = f_aug / jnp.linalg.norm(f_aug, axis=-1, keepdims=True)
 
-#     # KL divergence loss 
-#     p1 = jax.nn.log_softmax(logits, axis=1)
-#     p2 = jax.nn.softmax(logits, axis=0).T 
-#     invariance_loss = jnp.sum(p1 * (jnp.log(p1) - jnp.log(p2))) / n 
+      # # Compute the similarity scores
+      # sim_scores = jnp.dot(f_orig, jnp.transpose(f_aug)) / self.temp
 
-#     loss = loss + alpha * invariance_loss 
-#     return loss 
+      # # Compute the contrastive loss
+      # n = sim_scores.shape[0]
+      # labels = jnp.arange(n)
+      # contrastive_loss = -jnp.mean(jax.nn.log_softmax(sim_scores, axis=1) * hk.one_hot(labels, n))
 
-# def hint_relic_loss(features, projections, tau, b, alpha):
-#     loss = relic_loss(projections, projections, tau, b, alpha)
-#     return loss
+      # # Compute the KL divergence loss
+      # p_orig = jax.nn.log_softmax(sim_scores, axis=1)
+      # p_aug = jax.nn.softmax(sim_scores, axis=0).T
+      # kl_loss = jnp.mean(jnp.sum(p_orig * (jnp.log(p_orig) - jnp.log(p_aug)), axis=1))
+
+      # # Combine the losses
+      # loss = contrastive_loss + self.kl_weight * kl_loss
+
+      # return loss
+
+    def select_hints(self, hints, algo_idx):
+
+      selected_preds = {}
+      algo = self.algorithms[algo_idx]
+
+      # DFS-based
+
+      # Graph-based
+
+      # Sorting
+      if algo == 'insertion_sort':
+        selected_preds['pred_h'] = hint_preds['pred_h']
+
+      # Searching
+      else:
+        raise NotImplementedError("Hint-ReLIC loss not supported for this algo")
+
+      return selected_hint_preds

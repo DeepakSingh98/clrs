@@ -98,12 +98,15 @@ def _pmap_data(data: Union[_Feedback, _Features], n_devices: int):
   """Replicate/split feedback or features for pmapping."""
   if isinstance(data, _Feedback):
     features = data.features
+    aug_features = data.aug_features
   else:
     features = data
   pmap_data = features._replace(
       inputs=_pmap_reshape(features.inputs, n_devices),
       hints=_pmap_reshape(features.hints, n_devices, split_axis=1),
       lengths=_pmap_reshape(features.lengths, n_devices),
+      aug_inputs=_pmap_reshape(features.aug_inputs, n_devices),
+      sampled_steps=_pmap_reshape(features.sampled_steps, n_devices),
   )
   if isinstance(data, _Feedback):
     pmap_data = data._replace(
@@ -428,6 +431,28 @@ class BaselineModel(model.Model):
 
     # Optionally accumulate hint losses.
     if self.decode_hints:
+      if regularisation_config.use_hint_relic:
+        aug_features = [feedback.features.aug_inputs, feedback.features.hints, feedback.features.sampled_steps]
+        # Get the hint preds based on the augmented graph
+        _, aug_hint_preds, _ = self.net_fn.apply(
+        params, rng_key, aug_features,
+        repred=False,
+        algorithm_index=algorithm_index,
+        return_hints=True,
+        return_all_outputs=False)
+
+        sampled_steps = feedback.aug_features.sampled_steps
+
+        for truth in feedback.features.hints:
+          total_loss += self.hint_relic_loss(
+            truth=truth,
+            orig_preds=[x[truth.name] for x in hint_preds],
+            aug_preds=[x[truth.name] for x in aug_hint_preds],
+            lengths=lengths,
+            sampled_steps=sampled_steps,
+            algo_dx=algorithm_index,
+          )
+
       for truth in feedback.features.hints:
         total_loss += losses.hint_loss(
             truth=truth,

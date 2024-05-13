@@ -38,7 +38,8 @@ Trajectories = List[Trajectory]
 
 
 Algorithm = Callable[..., Any]
-Features = collections.namedtuple('Features', ['inputs', 'hints', 'lengths'])
+Features = collections.namedtuple('Features', ['inputs', 'hints', 'lengths', 'aug_inputs', 'sampled_steps'])
+# Aug_Features = collections.namedtuple('Aug_Features', ['aug_inputs', 'hints', 'sampled_steps'])
 FeaturesChunked = collections.namedtuple(
     'Features', ['inputs', 'hints', 'is_first', 'is_last'])
 Feedback = collections.namedtuple('Feedback', ['features', 'outputs'])
@@ -182,8 +183,15 @@ class Sampler(abc.ABC):
     if regularisation_config.use_hint_reversal:
       reversed_hints = regularisation_config.reverse_pointers(hints)
       hints.extend(reversed_hints)
+    
+    if regularisation_config.use_causal_augmentation:
+      sampled_steps = [self._rng.randint(1, length) for length in lengths]
+      aug_inputs = self._augment_data(inputs)
+    else:
+      aug_inputs = None
+      sampled_steps =  None
 
-    return Feedback(Features(inputs, hints, lengths), outputs)
+    return Feedback(Features(inputs, hints, lengths, aug_inputs, sampled_steps), outputs)
 
   @abc.abstractmethod
   def _sample_data(self, length: int, *args, **kwargs) -> List[_Array]:
@@ -288,7 +296,7 @@ def build_sampler(
   return sampler, spec
 
   @abc.abstractmethod
-  def _augment_data(self, *args, **kwargs):
+  def _augment_data(self, inputs):
     """Adds Hint ReLIC data augmentations for the specific algorithm."""
     pass
 
@@ -305,14 +313,25 @@ class SortingSampler(Sampler):
     arr = self._random_sequence(length=length, low=low, high=high)
     return [arr]
 
-  def _augment_data(self, array):
-    # Generate new elements
-    num_new_elements = ...  # Choose number of new elements 
-    new_elements = self._random_sequence(num_new_elements, low=..., high=...) 
+  def _augment_data(self, inputs):
+    """
+    Construct general augmented inputs by simply adding items at the end of each 
+    input array.
 
-    # Concatenate to the original array 
-    array = np.concatenate([array, new_elements])
-    return array
+    """
+    max_length = CLRS30['train']['length'] + 1
+    num_aug_items = max_length - inputs[0].data.shape[1]
+    aug_items = [self._rng.uniform(low=np.min(arr.data), high=np.max(arr.data), size=num_aug_items) for arr in inputs]
+    aug_inputs = [
+      probing.DataPoint(
+          name=dp.name,
+          location=dp.location,
+          type_=dp.type_,
+          data=np.concatenate(dp.data, aug_data, axis=-1)
+      )
+      for dp, aug_data in zip(inputs, aug_items)
+    ]
+    return aug_inputs
 
 
 class SearchSampler(Sampler):

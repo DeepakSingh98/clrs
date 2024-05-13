@@ -207,7 +207,7 @@ class Net(hk.Module):
 
     Args:
       features_list: A list of _Features objects, each with the inputs, hints
-        and lengths for a batch o data corresponding to one algorithm.
+        and lengths for a batch of data corresponding to one algorithm.
         The list should have either length 1, at train/evaluation time,
         or length equal to the number of algorithms this Net is meant to
         process, at initialization.
@@ -254,6 +254,8 @@ class Net(hk.Module):
       inputs = features.inputs
       hints = features.hints
       lengths = features.lengths
+      aug_inputs = features.aug_inputs
+      sampled_steps = features.sampled_steps
 
       batch_size, nb_nodes = _data_dimensions(features)
 
