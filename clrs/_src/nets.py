@@ -834,7 +834,7 @@ class NetChunked(Net):
     return (scan_output.output_preds, scan_output.hint_preds), mp_state
 
 
-def _data_dimensions(features: _Features, aug: bool) -> Tuple[int, int]:
+def _data_dimensions(features: _Features) -> Tuple[int, int]:
   """Returns (batch_size, nb_nodes)."""
   for inp in features.inputs:
     if inp.location in [_Location.NODE, _Location.EDGE]:
