@@ -72,10 +72,10 @@ class RegularisationConfig:
         ]
 
         def invert(d):
-        """Dict of lists -> list of dicts."""
-        if d:
-            return [dict(zip(d, i)) for i in zip(*d.values())]
+            """Dict of lists -> list of dicts."""
+            if d:
+                return [dict(zip(d, i)) for i in zip(*d.values())]
 
-        return processed_hint_preds
+            return processed_hint_preds
 
 regularisation_config = RegularisationConfig()

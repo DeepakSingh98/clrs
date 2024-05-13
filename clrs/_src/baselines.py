@@ -255,20 +255,36 @@ class BaselineModel(model.Model):
     self._device_params = None
     self._device_opt_state = None
     self.opt_state_skeleton = None
+    self.hidden_dim = hidden_dim
 
     if regularisation_config.use_hint_relic:
-      self.hint_relic_fn = hint_relic_fn
-      self.hint_relic_params = self.hint_relic_fn.init(
-        hidden_dim=self.hidden_dim,
-        truth=None,
-        orig_hint_preds=jnp.zeros((1, hidden_dim)),
-        aug_hint_preds=jnp.zeros((1, hidden_dim)),
-        lengths=jnp.zeros(1),
-        sampled_steps=jnp.zeros(1),
-        algorithm_index=0,
-        use_contrastive_loss=regularisation_config.use_hint_relic,
-        use_kl_loss=regularisation_config.use_kl_loss,
-    )
+      self.similarity_fn = hk.transform(
+        lambda rng_key, x, y, temp: losses.SimilarityFunction(self.hidden_dim)(x, y, temp)
+      )
+      self.similarity_params = self.similarity_fn.init(
+        jax.random.PRNGKey(42),
+        jnp.zeros((1, hidden_dim)),
+        jnp.zeros((1, hidden_dim)),
+        1.0,
+      )
+
+    # if regularisation_config.use_hint_relic:
+    #   self.similarity_fn = losses.similarity_fn
+    #   self.similarity_params = self.similarity_fn.init(
+    #     jax.random.PRNGKey(42),
+    #     hidden_dim,
+    #   )
+    #   self.hint_relic_params = self.hint_relic_fn.init(
+    #     hidden_dim=self.hidden_dim,
+    #     truth=None,
+    #     orig_hint_preds=jnp.zeros((1, hidden_dim)),
+    #     aug_hint_preds=jnp.zeros((1, hidden_dim)),
+    #     lengths=jnp.zeros(1),
+    #     sampled_steps=jnp.zeros(1),
+    #     algorithm_index=0,
+    #     use_contrastive_loss=regularisation_config.use_hint_relic,
+    #     use_kl_loss=regularisation_config.use_kl_loss,
+    # )
       # self.hint_relic_fn = losses.hint_relic_fn()
       # self.hint_relic_params = self.hint_relic_fn.init(jax.random.PRNGKey(42))
 
@@ -465,6 +481,28 @@ class BaselineModel(model.Model):
 
         hint_preds = regularisation_config._select_hints(hint_preds)
         aug_hint_preds = regularisation_config._select_hints(aug_hint_preds)
+
+        sim_scores = self.similarity_fn.apply(
+          self.similarity_params,
+          jax.random.PRNGKey(42),
+          orig_hint_preds,
+          aug_hint_preds,
+          temp=0.1,
+        )
+
+        total_loss += losses.hint_relic_loss(
+          # hidden_dim=self.hidden_dim,
+          # orig_hint_preds=orig_hint_preds,
+          # aug_hint_preds=aug_hint_preds,
+          # lengths=lengths,
+          sampled_steps=sampled_steps,
+          # algorithm_index=algorithm_index,
+          # temp=0.1,
+          kl_weight=1.0,
+          sim_scores=sim_scores,
+          use_contrastive_loss=regularisation_config.use_contrastive_loss,
+          use_kl_loss=regularisation_config.use_kl_loss,
+        )
         
         # for truth in feedback.features.hints:
         #   total_loss += self.hint_relic_fn.apply(

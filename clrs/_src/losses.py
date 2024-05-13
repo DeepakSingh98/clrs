@@ -253,25 +253,25 @@ class SimilarityFunction(hk.Module):
   #   return processed_hint_preds
     
 
-@hk.transform
-def similarity_fn(hidden_dim):
-  SimilarityFunction(hidden_dim)
+# @hk.transform
+# def similarity_fn(hidden_dim):
+#   SimilarityFunction(hidden_dim)
 
 
 def hint_relic_loss(
-    hidden_dim,
-    truth, 
-    orig_hint_preds, 
-    aug_hint_preds, 
-    lengths, 
+    # hidden_dim,
+    # truth, 
+    # hint_preds, 
+    # aug_hint_preds, 
+    # lengths, 
     sampled_steps, 
-    algorithm_index,
-    temp,
+    # algorithm_index,
+    # temp,
     kl_weight,
+    sim_scores,
+    use_contrastive_loss,
+    use_kl_loss,
 ):
-
-  # Compute the similarity scores
-  sim_scores = self.similarity_fn(orig_hint_preds, aug_hint_preds, temp=self.temp)
 
   loss = 0.0
 
