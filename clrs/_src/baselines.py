@@ -462,8 +462,12 @@ class BaselineModel(model.Model):
         return_all_outputs=False)
 
         sampled_steps = feedback.features.sampled_steps
+
+        hint_preds = _select_hints
+        aug_hint_preds = _select_hints
         
         for truth in feedback.features.hints:
+          if truth in algorithms[algo_idx]
           total_loss += self.hint_relic_fn.apply(
             self.hint_relic_params,
             hidden_dim=self.hidden_dim,
