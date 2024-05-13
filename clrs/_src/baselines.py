@@ -257,7 +257,9 @@ class BaselineModel(model.Model):
     self.opt_state_skeleton = None
 
     if regularisation_config.use_hint_relic:
-      self.hint_relic_loss = losses.hint_relic_fn(hidden_dim, regularisation_config.algorithms)
+      self.hint_relic_fn = hint_relic_fn
+      self.hint_relic_params = self.hint_relic_fn.init(jax.random.PRNGKey(42), hidden_dim, regularisation_config.algorithms)
+
 
   def _create_net_fns(self, hidden_dim, encode_hints, processor_factory,
                       use_lstm, encoder_init, dropout_prob,
@@ -409,6 +411,9 @@ class BaselineModel(model.Model):
             algorithm_index,
             return_hints,
             return_all_outputs))
+  
+  def hint_relic_loss(self, truth, orig_hint_preds, aug_hint_preds, lengths, sampled_steps, algo_idx):
+        return self.hint_relic_fn.apply(self.hint_relic_params, truth, orig_hint_preds, aug_hint_preds, lengths, sampled_steps, algo_idx)
 
   def _loss(self, params, rng_key, feedback, algorithm_index):
     """Calculates model loss f(feedback; params)."""
