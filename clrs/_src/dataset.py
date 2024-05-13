@@ -155,6 +155,9 @@ def _preprocess(data_point, algorithm=None):
   hints = []
   lengths = None
 
+  aug_inputs = []
+  sampled_steps = None
+
   for name, data in data_point.items():
     if name == 'lengths':
       lengths = data
