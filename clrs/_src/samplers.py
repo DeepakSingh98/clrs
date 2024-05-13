@@ -182,10 +182,6 @@ class Sampler(abc.ABC):
       hints = self._hints
       lengths = self._lengths
       outputs = self._outputs
-
-    # if regularisation_config.use_hint_reversal:
-    #   reversed_hints = regularisation_config.reverse_pointers(hints)
-    #   hints.extend(reversed_hints)
     
     aug_inputs = []
     sampled_steps = [self._rng.randint(0, length) for length in lengths]
@@ -1031,14 +1027,15 @@ def _augment_sorting_data(sample_iterator):
 
   def _augment_data(inputs):
     max_length = CLRS30['train']['length'] + 1
-    max_num_aug_items = max_length - inputs[0].data.shape[0]
+    max_num_aug_items = max_length - inputs[0].data.shape[-1]
     aug_items = [np.random.uniform(low=np.min(arr.data), high=np.max(arr.data), size=max_num_aug_items) for arr in inputs]
+    aug_items = jnp.expand_dims(aug_items, axis=0)
     aug_inputs = [
       probing.DataPoint(
           name=dp.name,
           location=dp.location,
           type_=dp.type_,
-          data=np.concatenate((dp.data, aug_data))
+          data=jnp.concatenate((dp.data, aug_data), axis=1)
       )
       for dp, aug_data in zip(inputs, aug_items)
     ]
