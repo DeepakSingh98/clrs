@@ -184,12 +184,12 @@ class Sampler(abc.ABC):
       reversed_hints = regularisation_config.reverse_pointers(hints)
       hints.extend(reversed_hints)
     
-    if regularisation_config.use_causal_augmentation:
-      sampled_steps = [self._rng.randint(1, length) for length in lengths]
-      aug_inputs = self._augment_data(inputs)
-    else:
-      aug_inputs = None
-      sampled_steps =  None
+    # if regularisation_config.use_causal_augmentation:
+    #   sampled_steps = [self._rng.randint(1, length) for length in lengths]
+    #   aug_inputs = self._augment_data(inputs)
+    # else:
+    aug_inputs = None
+    sampled_steps =  None
 
     return Feedback(Features(inputs, hints, lengths, aug_inputs, sampled_steps), outputs)
 
@@ -320,7 +320,7 @@ class SortingSampler(Sampler):
 
     """
     max_length = CLRS30['train']['length'] + 1
-    num_aug_items = max_length - inputs[0].data.shape[1]
+    max_num_aug_items = max_length - inputs[0].data.shape[1]
     aug_items = [self._rng.uniform(low=np.min(arr.data), high=np.max(arr.data), size=num_aug_items) for arr in inputs]
     aug_inputs = [
       probing.DataPoint(
@@ -970,5 +970,49 @@ def process_random_pos(sample_iterator, rng):
       features = feedback.features._replace(inputs=inputs)
       feedback = feedback._replace(features=features)
       yield feedback
+
+  return _iterate()
+
+def augment_data(sampler, algorithm):
+
+  SORTING_ALGOS = [
+      'insertion_sort',
+      'bubble_sort',
+      'heapsort',
+      'quicksort',
+  ]
+
+  if algorithm in SORTING_ALGOS:
+    return _augment_sorting_data(sampler)
+  else:
+    raise NotImplementedError('Data augmentation not supported for this algo.')
+
+def _augment_sorting_data(sampler):
+
+  def _iterate():
+    while True:
+      feedback = next(sampler)
+      features = feedback.features
+      lengths = features.lengths
+      sampled_steps = [self._rng.randint(1, length) for length in lengths]
+      aug_inputs = _augment_data(features.inputs)
+      features = features._replace(aug_inputs=aug_inputs, sampled_steps=sampled_steps)
+      feedback = feedback._replace(features=features)
+      yield feedback
+
+  def _augment_data(inputs):
+    max_length = CLRS30['train']['length'] + 1
+    max_num_aug_items = max_length - inputs[0].data.shape[0]
+    aug_items = [np.random.uniform(low=np.min(arr.data), high=np.max(arr.data), size=max_num_aug_items) for arr in inputs]
+    aug_inputs = [
+      probing.DataPoint(
+          name=dp.name,
+          location=dp.location,
+          type_=dp.type_,
+          data=np.concatenate((dp.data, aug_data))
+      )
+      for dp, aug_data in zip(inputs, aug_items)
+    ]
+    return aug_inputs
 
   return _iterate()

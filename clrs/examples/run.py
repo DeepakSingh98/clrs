@@ -265,6 +265,10 @@ def make_sampler(length: int,
   spec, sampler = clrs.process_permutations(spec, sampler, enforce_permutations)
   if chunked:
     sampler = clrs.chunkify(sampler, chunk_length)
+  
+  if regularisation_config.use_causal_augmentation:
+    sampler = clrs.augment_data(sampler)
+    
   return sampler, num_samples, spec
 
 
