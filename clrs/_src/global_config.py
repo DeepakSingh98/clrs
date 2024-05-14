@@ -55,7 +55,17 @@ class RegularisationConfig:
         self.use_kl_loss = False
         self.algorithms = None
     
-    def _select_hints(self, aug_hint_preds, algo_idx):
+   def _select_hints(self, hint_preds, algo_idx):
+
+        def invert(lst):
+            """List of dicts -> dict of lists."""
+            if lst:
+                result = {}
+                for d in lst:
+                    for k, v in d.items():
+                        result.setdefault(k, []).append(v)
+                return result
+        
         algo = self.algorithms[algo_idx]
         selection_dict = {
             "insertion_sort": ['pred_h'],
@@ -63,19 +73,14 @@ class RegularisationConfig:
         selected_hint_keys = selection_dict.get(algo, [])
 
         # Invert the list of dictionaries first
-        inverted_aug_hint_preds = invert(aug_hint_preds)
+        inverted_hint_preds = invert(hint_preds)
 
-        # Select the desired keys from the inverted list of dictionaries
-        processed_hint_preds = [
-            {key: step_dict[key] for key in selected_hint_keys}
-            for step_dict in inverted_aug_hint_preds
-        ]
+       # Select the desired keys from the hint_preds list of dictionaries using a dictionary comprehension
+        processed_hint_preds = {
+            key: [step_dict.get(key, None) for step_dict in hint_preds]
+            for key in selected_hint_keys
+        }
 
-        def invert(d):
-            """Dict of lists -> list of dicts."""
-            if d:
-                return [dict(zip(d, i)) for i in zip(*d.values())]
-
-            return processed_hint_preds
+        return processed_hint_preds
 
 regularisation_config = RegularisationConfig()
