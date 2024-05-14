@@ -251,25 +251,25 @@ def hint_relic_loss(
   if mask == None:
     mask = jnp.ones_like(sim_scores)
 
-  # where to use  mask *= _is_not_done_broadcast(sampled_steps, jnp.arange(length)[:, None], loss)?
-
   # Compute the contrastive loss
   numerator = jax.nn.softmax(sim_scores, axis=1)  # Shape: (steps, batch)
   denominator = jnp.sum(jnp.exp(sim_scores), axis=0) # Shape: (batch,)
   denominator = denominator.reshape(1, denominator.shape[0]) # Shape: (steps, batch)
-  log_ratio = jnp.log(numerator / denominator[:, None])  # Shape: (steps, batch)
-  breakpoint()
-  contrastive_loss = -jnp.mean(log_ratio)
+  log_ratio = jnp.log(numerator / denominator)  # Shape: (steps, batch)
+  contrastive_loss = -log_ratio
   loss += contrastive_loss
 
   if use_kl_loss:
     # Compute the KL divergence loss
     p_orig = jax.nn.log_softmax(sim_scores, axis=1)
     p_aug = jax.nn.softmax(sim_scores, axis=0)
-    kl_loss = jnp.mean(jnp.sum(p_orig * (jnp.log(p_orig) - jnp.log(p_aug)), axis=1))
+    kl_loss = jnp.sum(p_orig * (jnp.log(p_orig) - jnp.log(p_aug)), axis=1)  # Shape: (steps,)
+    kl_loss = jnp.expand_dims(kl_loss, axis=-1)  # Shape: (steps, 1)
+    kl_loss = jnp.broadcast_to(kl_loss, (sim_scores.shape[0], sim_scores.shape[1]))  # Shape: (steps, batch)
     loss += kl_weight * kl_loss
 
   # Mask out the entire Hint-ReLIC loss on steps later than the sampled step
+  mask *= _is_not_done_broadcast(sampled_steps, jnp.arange(length)[:, None], loss)
   loss = jnp.sum(loss * mask) / jnp.maximum(jnp.sum(mask), EPS)
 
   return loss
